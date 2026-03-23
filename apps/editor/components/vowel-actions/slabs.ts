@@ -24,11 +24,13 @@ Polygon lies in the XZ plane; slab elevation comes from the slab node defaults.`
       parameters: {
         width: {
           type: 'number',
-          description: 'Extent along +X in the chosen unit (first of "A by B" unless user specifies otherwise)',
+          description:
+            'Extent along +X in the chosen unit (first of "A by B" unless user specifies otherwise)',
         },
         depth: {
           type: 'number',
-          description: 'Extent along +Z in the chosen unit (second of "A by B" unless user specifies otherwise)',
+          description:
+            'Extent along +Z in the chosen unit (second of "A by B" unless user specifies otherwise)',
         },
         unit: {
           type: 'string',
@@ -117,7 +119,7 @@ Polygon lies in the XZ plane; slab elevation comes from the slab node defaults.`
     'translateSlab',
     {
       description:
-        'Move a slab horizontally (XZ polygon) and/or vertically (elevation). Pass slabId from getSceneInfo or omit to use the single selected slab.',
+        'Move a slab horizontally (XZ polygon) and/or vertically (elevation). Pass slabId from getSceneInfo or omit to use the single selected slab. Deltas are in the chosen unit; scene slab bounds from getSceneInfo are in meters — convert or use unit meters when computing from bounds.',
       parameters: {
         slabId: { type: 'string', description: 'Optional slab node id', optional: true },
         deltaX: {

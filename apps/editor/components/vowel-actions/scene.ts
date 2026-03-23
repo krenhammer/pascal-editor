@@ -3,13 +3,41 @@ import { getStore } from './store'
 import type { VowelClient } from './types'
 
 /**
+ * Axis-aligned bounds for a slab polygon in scene units (meters).
+ * Lets the voice agent place slabs relative to each other without guessing.
+ */
+function slabPolygonBounds(polygon: [number, number][]) {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minZ = Infinity
+  let maxZ = -Infinity
+  for (const [x, z] of polygon) {
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x)
+    minZ = Math.min(minZ, z)
+    maxZ = Math.max(maxZ, z)
+  }
+  return {
+    minX,
+    maxX,
+    minZ,
+    maxZ,
+    centerX: (minX + maxX) / 2,
+    centerZ: (minZ + maxZ) / 2,
+    widthM: maxX - minX,
+    depthM: maxZ - minZ,
+  }
+}
+
+/**
  * Read-only scene summary for the voice agent (buildings, levels, references, zones, slabs).
  */
 export function registerSceneActions(vowel: VowelClient) {
   vowel.registerAction(
     'getSceneInfo',
     {
-      description: 'Get information about the current scene (buildings, levels, elements)',
+      description:
+        'Get information about the current scene (buildings, levels, elements). Slab bounds (minX, maxX, minZ, maxZ, center, widthM, depthM) and elevation are in meters — use them to compute translateSlab deltas (feet/meters per that action).',
       parameters: {},
     },
     async () => {
@@ -70,8 +98,19 @@ export function registerSceneActions(vowel: VowelClient) {
                 const slabs = childIds
                   .filter((cid: string) => scene.nodes[cid]?.type === 'slab')
                   .map((cid: string) => {
-                    const s = scene.nodes[cid] as { name?: string }
-                    return { id: cid, name: s.name ?? null }
+                    const s = scene.nodes[cid] as {
+                      name?: string
+                      polygon?: [number, number][]
+                      elevation?: number
+                    }
+                    const polygon = s.polygon ?? []
+                    const bounds = polygon.length > 0 ? slabPolygonBounds(polygon) : null
+                    return {
+                      id: cid,
+                      name: s.name ?? null,
+                      elevationM: s.elevation ?? 0.05,
+                      bounds,
+                    }
                   })
                 return {
                   id: lid,

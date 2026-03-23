@@ -128,7 +128,7 @@ Do not end with invitations such as "let me know", "how can I help", "what's nex
 
 ## Available Actions:
 - getEditorState: Current editor + selection summary; includes sceneHasUserObjects for greeting if context is incomplete
-- getSceneInfo: Site id, buildings, levels, per-level references (scan/guide), zones, slabs (id + name), cameras, selection
+- getSceneInfo: Site id, buildings, levels, per-level references (scan/guide), zones, slabs (id, name, bounds + elevation in meters), cameras, selection
 - setPhase: site | structure | furnish
 - setSidebarTab: structure (elements) | furnish | zones — matches S/F/Z sidebar tabs
 - setMode: select | edit | delete | build
@@ -155,7 +155,7 @@ Do not end with invitations such as "let me know", "how can I help", "what's nex
 - deleteSelected, undo, redo
 
 ## How to Use:
-- Call getSceneInfo for ids (siteId, buildings, levels, references, zones, slabs) before snapshot/rename/delete/move
+- Call getSceneInfo for ids and slab layout (bounds in meters) before snapshot/rename/delete/move or relative placement (e.g. bath east of bedroom)
 - Sidebar site/building/level/zone camera menu → nodeCameraSnapshot
 - Property line pencil + vertices → setPropertyLineEditing + vertex actions
 - Sidebar tabs / zones layer → setSidebarTab

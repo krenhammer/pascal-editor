@@ -6,11 +6,24 @@ import { useSyncContext, VowelAgent, VowelProvider } from '@vowel.to/client/reac
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { buildVowelContext } from '@/components/vowel-actions/context'
+import { buildVowelContext, getSceneHasUserObjects } from '@/components/vowel-actions/context'
+import { ensureDefaultBuildingAndLevelSelection } from '@/components/vowel-actions/default-selection'
 import { registerVowelActions } from '@/components/vowel-actions/register'
 import { getStore } from '@/components/vowel-actions/store'
 
 const ROUTES = [{ path: '/', description: 'Editor - Main 3D building editor' }]
+
+/**
+ * Ensures voice tools see the same preconditions as the structure UI: `useEditor.setPhase('structure')`
+ * runs the editor’s own `selectBuildingAndLevel0` logic; {@link ensureDefaultBuildingAndLevelSelection}
+ * covers late scene load or edge cases. Call once when the Vowel client is constructed (not on every
+ * context tick) so site/overview mode is not fought while the user works there after init.
+ */
+function prepareEditorStateForVoiceActions(): void {
+  const getEditorState = getStore('editor')
+  getEditorState?.()?.setPhase('structure')
+  ensureDefaultBuildingAndLevelSelection()
+}
 
 /**
  * Builds the object passed to {@link useSyncContext} from Zustand stores.
@@ -32,6 +45,7 @@ function buildEditorViewerSyncPayload(): Record<string, unknown> | null {
       structureLayer: editor?.structureLayer,
       selectedReferenceId: editor?.selectedReferenceId ?? null,
     },
+    sceneContent: { hasObjects: getSceneHasUserObjects() },
     viewer: {
       selectedIds: viewer?.selection?.selectedIds || [],
       buildingId: viewer?.selection?.buildingId,
@@ -51,12 +65,15 @@ function buildEditorViewerSyncPayload(): Record<string, unknown> | null {
  * `useSyncContext` takes the payload each render (see @vowel.to/client typings).
  */
 function EditorStateSync() {
-  const [syncPayload, setSyncPayload] = useState<Record<string, unknown> | null>(() =>
-    typeof window === 'undefined' ? null : buildEditorViewerSyncPayload(),
-  )
+  const [syncPayload, setSyncPayload] = useState<Record<string, unknown> | null>(() => {
+    if (typeof window === 'undefined') return null
+    ensureDefaultBuildingAndLevelSelection()
+    return buildEditorViewerSyncPayload()
+  })
 
   useEffect(() => {
     const tick = () => {
+      ensureDefaultBuildingAndLevelSelection()
       setSyncPayload(buildEditorViewerSyncPayload())
       const gv = getStore('viewer')
       setVowelBridgeProjectId(gv?.()?.projectId ?? null)
@@ -100,8 +117,17 @@ When performing actions, write to the application store/state, NOT manipulate th
 ## Context
 The <context> section is automatically updated with the current editor state. Always check it for the latest information.
 
+## CRITICAL: Initial greeting (first spoken line in a session)
+Before your first spoken reply, use context.sceneContent.hasObjects if present. If it is missing or ambiguous, call getEditorState once and use sceneHasUserObjects from the result.
+- If there is user scene content (hasObjects / sceneHasUserObjects true): your entire first reply must be exactly: I am ready to continue.
+- If there is none (false): your entire first reply must be exactly: Let's get started.
+No other words on that first line—no welcome, no questions, no feature lists.
+
+## After completing a task
+Do not end with invitations such as "let me know", "how can I help", "what's next", or similar. State the outcome briefly and stop.
+
 ## Available Actions:
-- getEditorState: Current editor + selection summary
+- getEditorState: Current editor + selection summary; includes sceneHasUserObjects for greeting if context is incomplete
 - getSceneInfo: Site id, buildings, levels, per-level references (scan/guide), zones, slabs (id + name), cameras, selection
 - setPhase: site | structure | furnish
 - setSidebarTab: structure (elements) | furnish | zones — matches S/F/Z sidebar tabs
@@ -113,7 +139,7 @@ The <context> section is automatically updated with the current editor state. Al
 - deleteScanOrGuide, selectReference (id or clear)
 - renameNode: Site, building, level, zone, scan, guide, slab display names (slab ids from levels[].slabs)
 - renameSelectedSlab: Rename the single selected slab
-- createRectangularSlab: width × depth on current level (unit feet or meters; optional origin corner, name)
+- createRectangularSlab: voice "add slab A by B feet named …" → this action on selected level (full mapping in action description; not setTool slab)
 - translateSlab: Move slab by deltas in X, Z, elevation (unit feet or meters; optional slabId else selection)
 - nodeCameraSnapshot: view | capture | clear for site, building, level, or zone node ids
 - selectZone, setZoneColor
@@ -161,7 +187,9 @@ Help users navigate the 3D editor with voice commands.`,
           model: 'openai/gpt-oss-120b',
           voice: 'Timothy',
           language: 'en-US',
-          initialGreetingPrompt: `Welcome to the Pascal 3D Building Editor. You can use voice commands to switch tools, change modes, navigate between floors, and manage your building project. Try saying "what tools are available?" or "show me the scene" to get started.`,
+          /** No browser Silero/simple VAD; rely on server / provider turn detection. */
+          turnDetection: { mode: 'disabled' },
+          initialGreetingPrompt: `First spoken reply only. Use context.sceneContent.hasObjects, or call getEditorState if missing, field sceneHasUserObjects. If true: say exactly "I am ready to continue". If false: say exactly "Let's get started". Those phrases only—no other words.`,
         },
         onUserSpeakingChange: (isSpeaking: boolean) => {
           console.log('[Vowel] User speaking:', isSpeaking)
@@ -175,6 +203,7 @@ Help users navigate the 3D editor with voice commands.`,
       })
 
       registerVowelActions(instance)
+      prepareEditorStateForVoiceActions()
       instance.updateContext(buildVowelContext())
 
       onClientReady(instance)

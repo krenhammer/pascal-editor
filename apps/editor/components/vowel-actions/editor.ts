@@ -1,3 +1,4 @@
+import { getSceneHasUserObjects } from './context'
 import { safeAction } from './helpers'
 import { getStore } from './store'
 import type { VowelClient } from './types'
@@ -9,7 +10,8 @@ export function registerEditorActions(vowel: VowelClient) {
   vowel.registerAction(
     'getEditorState',
     {
-      description: 'Get current editor state (phase, mode, tool, selection)',
+      description:
+        'Get current editor state (phase, mode, tool, selection) and sceneHasUserObjects. For the very first greeting, call this if context.sceneContent.hasObjects is missing.',
       parameters: {},
     },
     async () => {
@@ -52,6 +54,7 @@ export function registerEditorActions(vowel: VowelClient) {
             selectedLevel: levelName,
             selectedIds: viewer?.selection?.selectedIds,
             totalNodes: Object.keys(scene?.nodes || {}).length,
+            sceneHasUserObjects: getSceneHasUserObjects(),
           }
         },
         { success: false, error: 'Failed to get editor state' },

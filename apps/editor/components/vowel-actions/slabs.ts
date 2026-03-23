@@ -6,16 +6,30 @@ import type { VowelClient } from './types'
 
 /**
  * Voice actions for rectangular slabs: create, translate, rename (selection).
+ *
+ * Action descriptions are written for the voice LLM (tool schema): they spell out
+ * natural-language mapping and prerequisites, not only API semantics.
  */
 export function registerSlabActions(vowel: VowelClient) {
   vowel.registerAction(
     'createRectangularSlab',
     {
-      description:
-        'Create a new axis-aligned rectangular floor slab on the currently selected level. Polygon is in the XZ plane; Y height uses slab elevation. Use unit feet for voice dimensions like 15 by 20.',
+      description: `Create an axis-aligned rectangular floor slab on the currently selected level (viewer.selection.levelId). Use this for voice requests like "add a slab 30 by 20 feet called master bedroom" — do not use setTool(slab) for that; call this with numeric width, depth, optional unit, and optional name in one step.
+
+Before calling: If context shows no selected level or create fails with "No level selected", call getEditorState or getSceneInfo, then selectLevel (or selectBuilding + selectLevel) so a level is active.
+
+Mapping speech to parameters: Parse two positive dimensions as width (along +X) and depth (along +Z). If the user only gives "A by B" without orientation, use width=A, depth=B in the order they said them. Default unit is feet when they say feet, ft, or foot; use meters when they say meters/m. Put room labels in name (e.g. Master bedroom) in the same call when they ask for a name.
+
+Polygon lies in the XZ plane; slab elevation comes from the slab node defaults.`,
       parameters: {
-        width: { type: 'number', description: 'Width along +X' },
-        depth: { type: 'number', description: 'Depth along +Z' },
+        width: {
+          type: 'number',
+          description: 'Extent along +X in the chosen unit (first of "A by B" unless user specifies otherwise)',
+        },
+        depth: {
+          type: 'number',
+          description: 'Extent along +Z in the chosen unit (second of "A by B" unless user specifies otherwise)',
+        },
         unit: {
           type: 'string',
           description: 'feet | meters (default feet)',
@@ -31,7 +45,11 @@ export function registerSlabActions(vowel: VowelClient) {
           description: 'Min-corner Z in the same unit (default 0)',
           optional: true,
         },
-        name: { type: 'string', description: 'Optional display name', optional: true },
+        name: {
+          type: 'string',
+          description: 'Display name when the user names the room or slab (e.g. Master bedroom)',
+          optional: true,
+        },
       },
     },
     async (args: {

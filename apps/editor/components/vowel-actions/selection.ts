@@ -3,6 +3,34 @@ import { getStore } from './store'
 import type { VowelClient } from './types'
 
 /**
+ * Ordered level node ids under a building; prefers ground (`level === 0`) when present.
+ */
+function levelIdsForBuilding(
+  scene: { nodes: Record<string, { type?: string; level?: number }> },
+  building: { children?: string[] },
+): string[] {
+  return building.children?.filter((id: string) => scene.nodes[id]?.type === 'level') ?? []
+}
+
+/**
+ * Picks a level to pair with `selectBuilding` so {@link useViewer}'s hierarchy guard
+ * does not clear `levelId` (it nulls level when `buildingId` updates without `levelId`).
+ */
+function resolveLevelIdForBuildingSelection(
+  scene: { nodes: Record<string, { type?: string; level?: number }> },
+  buildingId: string,
+  previousLevelId: string | null | undefined,
+): string | null {
+  const building = scene.nodes[buildingId] as { type?: string; children?: string[] } | undefined
+  if (!building || building.type !== 'building') return null
+  const levelIds = levelIdsForBuilding(scene, building)
+  if (levelIds.length === 0) return null
+  if (previousLevelId && levelIds.includes(previousLevelId)) return previousLevelId
+  const ground = levelIds.find((cid) => scene.nodes[cid]?.level === 0)
+  return ground ?? levelIds[0] ?? null
+}
+
+/**
  * Voice actions for building/level/scene selection, multi-select, zones, and delete-selected.
  */
 export function registerSelectionActions(vowel: VowelClient) {
@@ -61,7 +89,8 @@ export function registerSelectionActions(vowel: VowelClient) {
   vowel.registerAction(
     'selectBuilding',
     {
-      description: 'Select a building by ID',
+      description:
+        'Select a building by id from getSceneInfo. Also selects a default floor (ground / first level) so slab and level-scoped actions keep a valid levelId — required because changing building without levelId clears the current floor in the viewer.',
       parameters: {
         buildingId: { type: 'string', description: 'Building ID to select' },
       },
@@ -76,6 +105,7 @@ export function registerSelectionActions(vowel: VowelClient) {
             return { success: false, error: 'Stores not available' }
           }
 
+          const viewer = getViewerState()
           const scene = getSceneState()
           const building = scene?.nodes?.[buildingId]
 
@@ -83,8 +113,28 @@ export function registerSelectionActions(vowel: VowelClient) {
             return { success: false, error: `Building not found: ${buildingId}` }
           }
 
-          getViewerState().setSelection({ buildingId, selectedIds: [] })
-          return { success: true, message: `Selected building: ${buildingId}` }
+          const levelId = resolveLevelIdForBuildingSelection(
+            scene,
+            buildingId,
+            viewer.selection?.levelId,
+          )
+          if (!levelId) {
+            return {
+              success: false,
+              error: 'Building has no levels (floors). Add a level in the UI first.',
+            }
+          }
+
+          viewer.setSelection({
+            buildingId,
+            levelId,
+            selectedIds: [],
+          })
+          return {
+            success: true,
+            message: `Selected building ${buildingId} and level ${levelId}`,
+            levelId,
+          }
         },
         { success: false, error: 'Failed to select building' },
       )

@@ -3,6 +3,7 @@ import { Barlow } from 'next/font/google'
 import localFont from 'next/font/local'
 import Script from 'next/script'
 import './globals.css'
+import { VowelAppWrapper } from '../components/vowel-wrapper'
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -48,7 +49,9 @@ export default function RootLayout({
           </>
         )}
       </head>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <VowelAppWrapper>{children}</VowelAppWrapper>
+      </body>
     </html>
   )
 }

@@ -81,17 +81,17 @@ Site (site_*) → Building (building_*) → Level (level_*) → [Walls, Slabs, D
 
 ### Default Dimensions for Floorplan Import
 
-When interpreting a floorplan image without explicit measurements, use these relative defaults:
+When interpreting a floorplan image without explicit measurements, use these relative defaults (American construction standards):
 
 | Element | Default Value | Notes |
 |---------|---------------|-------|
-| Wall height | 2.0m | Standard ceiling height |
-| Wall thickness | 0.2m | Interior walls |
-| Exterior wall thickness | 0.3m | Outer walls |
-| Door width | 0.9m | Standard door |
-| Door height | 2.1m | Standard door height |
-| Window height | 1.5m | Standard window |
-| Window sill height | 0.9m | From floor |
+| Wall height | 2.0m | Default ceiling height (US standard finished height ~2.44m / 8ft, but 2.0m is the editor default) |
+| Wall thickness | 0.12m | Interior partition walls (2×4 framing: 3.5" studs + 5/8" drywall each side ≈ 4.75" / ~0.12m) |
+| Exterior wall thickness | 0.165m | Exterior walls (2×6 framing: 5.5" studs + sheathing + drywall ≈ 6.5" / ~0.165m) |
+| Door width | 0.91m | Standard interior door (36") |
+| Door height | 2.03m | Standard door height (80" / 6ft 8in) |
+| Window height | 1.22m | Standard window (48") |
+| Window sill height | 0.91m | From floor (36") |
 | Floor thickness (slab) | 0.15m | Default slab elevation |
 
 ### Creating Nodes from Floorplan Image
@@ -131,8 +131,8 @@ const wall = WallNode.parse({
   name: 'Wall 1',
   start: [0, 0],      // [x, z] in meters
   end: [5, 0],        // [x, z] in meters
-  height: 2.0,        // meters
-  thickness: 0.2,     // meters
+  height: 2.0,        // meters (editor default; US finish ceiling ~2.44m)
+  thickness: 0.12,    // meters — interior 2×4 wall (US standard ~4.75" / 0.12m)
 })
 
 createNode(wall, level.id)
@@ -162,9 +162,9 @@ import { DoorNode, WindowNode } from '@pascal-app/core'
 
 // Doors are placed at wall-relative positions
 const door = DoorNode.parse({
-  position: [2.5, 1.05, 0],  // [along wall, height/2, 0]
-  width: 0.9,
-  height: 2.1,
+  position: [2.5, 1.015, 0],  // [along wall, height/2, 0]
+  width: 0.91,                 // 36" standard interior door
+  height: 2.03,                // 80" / 6ft 8in standard door height
   wallId: wall.id,
   side: 'front',
   hingesSide: 'left',
@@ -272,7 +272,7 @@ export function importFloorplan(
     const wall = WallNode.parse({
       start: [w.start[0] * scale, w.start[1] * scale],
       end: [w.end[0] * scale, w.end[1] * scale],
-      thickness: w.exterior ? 0.3 : 0.2,
+      thickness: w.exterior ? 0.165 : 0.12,  // US standard: exterior 2×6 ~0.165m, interior 2×4 ~0.12m
       height: 2.0,
     })
     nodes.push({ node: wall, parentId: level.id })

@@ -2,7 +2,7 @@
 
 import { initSpaceDetectionSync, initSpatialGridSync, useScene } from '@pascal-app/core'
 import { InteractiveSystem, useViewer, Viewer } from '@pascal-app/viewer'
-import { type ReactNode, useEffect, useState } from 'react'
+import React, { type ReactNode, useEffect, useState } from 'react'
 import { ViewerOverlay } from '../../components/viewer-overlay'
 import { ViewerZoneSystem } from '../../components/viewer-zone-system'
 import { type PresetsAdapter, PresetsProvider } from '../../contexts/presets-context'
@@ -95,17 +95,30 @@ export interface EditorProps {
 
   // Presets storage backend (defaults to localStorage)
   presetsAdapter?: PresetsAdapter
+
+  // Error recovery - called when user clicks "Load new JSON" from error dialog
+  onLoadNewSceneRequest?: () => void
 }
 
-function EditorSceneCrashFallback() {
+interface EditorSceneCrashFallbackProps {
+  onLoadNewScene?: () => void
+  onClearSceneAndGoHome?: () => void
+}
+
+function EditorSceneCrashFallback({ onLoadNewScene, onClearSceneAndGoHome }: EditorSceneCrashFallbackProps) {
+  const handleGoHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Clear scene data before navigating to prevent stale data on return
+    onClearSceneAndGoHome?.()
+  }
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-background/95 p-4 text-foreground">
       <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-6 shadow-xl">
         <h2 className="font-semibold text-lg">The editor scene failed to render</h2>
         <p className="mt-2 text-muted-foreground text-sm">
-          You can retry the scene or return home without reloading the whole app shell.
+          You can retry the scene, load a different scene, or return home without reloading the whole app shell.
         </p>
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             className="rounded-md border border-border bg-accent px-3 py-2 font-medium text-sm hover:bg-accent/80"
             onClick={() => window.location.reload()}
@@ -113,9 +126,19 @@ function EditorSceneCrashFallback() {
           >
             Reload editor
           </button>
+          {onLoadNewScene && (
+            <button
+              className="rounded-md border border-border bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
+              onClick={onLoadNewScene}
+              type="button"
+            >
+              Load new JSON
+            </button>
+          )}
           <a
             className="rounded-md border border-border bg-background px-3 py-2 font-medium text-sm hover:bg-accent/40"
             href="/"
+            onClick={handleGoHome}
           >
             Back to home
           </a>
@@ -139,6 +162,7 @@ export default function Editor({
   settingsPanelProps,
   sitePanelProps,
   presetsAdapter,
+  onLoadNewSceneRequest,
 }: EditorProps) {
   useKeyboard()
 
@@ -159,6 +183,10 @@ export default function Editor({
     async function load() {
       isLoadingSceneRef.current = true
       setIsSceneLoading(true)
+
+      // Reset any previous error state in the error boundary before loading new scene
+      // This prevents error loops when loading new JSON after a render failure
+      ErrorBoundary.resetErrorBoundary()
 
       try {
         const sceneGraph = onLoad ? await onLoad() : loadSceneFromLocalStorage()
@@ -200,6 +228,17 @@ export default function Editor({
 
   const showLoader = isLoading || isSceneLoading
 
+  /**
+   * Clears all scene data and resets the error boundary when navigating home from an error state.
+   * This prevents stale scene data from persisting when the user returns to the editor.
+   */
+  const handleClearSceneAndGoHome = () => {
+    // Clear the scene store to remove all node data
+    useScene.getState().clearScene()
+    // Reset the error boundary so it doesn't stay in error state
+    ErrorBoundary.resetErrorBoundary()
+  }
+
   return (
     <PresetsProvider adapter={presetsAdapter}>
       <div className="dark h-full w-full text-foreground">
@@ -224,7 +263,7 @@ export default function Editor({
           </>
         )}
 
-        <ErrorBoundary fallback={<EditorSceneCrashFallback />}>
+        <ErrorBoundary fallback={<EditorSceneCrashFallback onLoadNewScene={onLoadNewSceneRequest} onClearSceneAndGoHome={handleClearSceneAndGoHome} />}>
           <Viewer selectionManager={isPreviewMode ? 'default' : 'custom'}>
             {!isPreviewMode && <SelectionManager />}
             {!isPreviewMode && <FloatingActionMenu />}

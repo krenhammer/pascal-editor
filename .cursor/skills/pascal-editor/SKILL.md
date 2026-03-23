@@ -1,6 +1,6 @@
 ---
 name: pascal-editor
-description: Guides work on the Pascal Editor V2 monorepo (Turborepo, core/viewer/editor split, scene graph, R3F). Use when editing this repo, adding nodes/systems/renderers/tools, turning floorplan images into export JSON (multimodal vision for zones/doors/windows + scale), or answering architecture questions. Does not cover vowel-* integration unless the user explicitly asks.
+description: Guides work on the Pascal Editor V2 monorepo (Turborepo, core/viewer/editor split, scene graph, R3F). Use when editing this repo, adding nodes/systems/renderers/tools, building or validating scene export JSON (Site→Building→Level, wall-local doors/windows, parentId/children invariants), turning floorplan images into export JSON, or answering architecture questions. Does not cover vowel-* integration unless the user explicitly asks.
 ---
 
 # Pascal Editor V2
@@ -58,6 +58,112 @@ Three.js (WebGPU) + R3F, Next.js 16, React 19, Zustand + Zundo, Radix + Tailwind
 
 ---
 
+## Scene export JSON (complete reference)
+
+Authoritative schemas live under `packages/core/src/schema/nodes/`. The editor loads arbitrary JSON via `setScene` (with migrations); **hand-written files should still follow the invariants below** so tools, wall cutouts, and selection behave correctly.
+
+### Canonical shape
+
+```typescript
+type SceneGraph = {
+  nodes: Record<string, AnyNode> // every node by id — flat map
+  rootNodeIds: string[] // usually exactly one site id
+}
+```
+
+Every node includes at least: `object: "node"`, `id`, `type`, `parentId` (`null` or string), `visible`, `metadata` (object). See `BaseNode` in `packages/core/src/schema/base.ts`.
+
+### `rootNodeIds`
+
+- **Intended layout:** `rootNodeIds === [siteId]` — one `type: "site"` node owns the project.
+- **Do not** leave a `building` as the only root unless you are intentionally emulating a broken/legacy file; `syncEditorSelectionFromCurrentScene` in `packages/editor/src/lib/scene.ts` expects to resolve `site → building → level` from `rootNodeIds[0]`.
+- Any node with `parentId: null` that is **not** listed in `rootNodeIds` is inconsistent (either add it to roots or set a parent).
+
+### Site → Building → Level
+
+| Node | `parentId` | `children` | Notes |
+|------|------------|------------|--------|
+| **Site** | `null` (and listed in `rootNodeIds`) | Building ids **or** embedded building objects | Zod schema allows **full nested** `BuildingNode` objects in `site.children` (`SiteNode.parse({ children: [building] })`). In **hand-written JSON**, an array of **string ids** (e.g. `["building_…"]`) is fine: the editor resolves strings when walking the graph (`resolve` in `scene.ts`). |
+| **Building** | Site’s `id` | **Level ids only** (strings) | `position` / `rotation` are in **site** space. |
+| **Level** | Building’s `id` | Ids of walls, slabs, zones, ceilings, roofs, scans, guides, **and** free-standing **items** | Exported scenes often list many node types here; `createNodesAction` also appends ids when parenting. Every id in `level.children` should exist and point back with `parentId === level.id`. |
+
+**Programmatic hierarchy (matches `loadScene` in `use-scene.ts`):**
+
+```typescript
+const level = LevelNode.parse({ level: 0, children: [] })
+const building = BuildingNode.parse({ children: [level.id] })
+const site = SiteNode.parse({ children: [building] }) // embedded building object — still also store `building` in `nodes`
+
+createNodes([
+  { node: site, parentId: null },
+  { node: building, parentId: site.id },
+  { node: level, parentId: building.id },
+])
+```
+
+### Walls, doors, windows (critical)
+
+**Walls** live under the **level**: `parentId === levelId`. `start` / `end` are `[x, z]` in **level** coordinates (horizontal plane); wall height/thickness are node fields.
+
+**Parametric `door` and `window` nodes** (types `"door"` / `"window"`) are **children of the wall they cut**, not the level:
+
+- Set `parentId` to the wall’s `id` (same as `wallId`).
+- Call `createNode(door, wall.id)` — **not** `createNode(door, level.id)`. This matches the door/window tools in `packages/editor/src/components/tools/door/` and `window/`.
+
+**Wall-mounted `item` nodes** (GLB windows, etc.) also use `parentId === wallId` and appear in `wall.children`.
+
+**Wall-local coordinate frame** (see `wallLocalToWorld` in `packages/editor/src/components/tools/door/door-math.ts` and `window/window-math.ts`):
+
+- **Origin** of the wall-local frame: wall **`start`** point in level `[x, z]`.
+- **Local X**: distance **along** the wall from `start` toward `end` (meters). A door centered 2 m along a 5 m wall uses `position[0] === 2` (before clamping).
+- **Local Y**: height **above the wall base** in meters (not world Y). For doors, the editor uses **`Y = height / 2`** (leaf center); schema describes this as the door center in wall-local space (`DoorNode` description in `packages/core/src/schema/nodes/door.ts`).
+- **Local Z**: offset through the wall thickness; **`0` is standard** for centered openings.
+- **World position** (for debugging): rotate local `(localX, localY)` by the wall angle in the XZ plane and add `start`, then add slab/level vertical offsets as in `wallLocalToWorld`.
+
+**`side`:** `'front' | 'back'` — which face of the wall the opening sits on; should agree with how the mesh was authored.
+
+**`rotation`:** Typically `[0, y, 0]` with **Y** aligned to the wall heading (door/window tools compute this from the hit normal).
+
+### DoorNode / WindowNode quick fields
+
+- **Door:** `wallId`, `position`, `rotation`, `side`, `width`, `height`, `hingesSide`, `swingDirection`, optional `segments`, frame/handle flags — see `packages/core/src/schema/nodes/door.ts`.
+- **Window:** `wallId`, `position` (center in wall-local space), `rotation`, `side`, `width`, `height`, frame + pane ratios — see `packages/core/src/schema/nodes/window.ts`.
+
+Default door height in schema is **2.1** m; floorplan defaults in the table below may use **2.03** m for US doors — both are acceptable if consistent within a file.
+
+### `parentId` ↔ `children` consistency checklist
+
+Before treating a JSON file as **complete**:
+
+1. **Coverage:** Every `id` referenced in any `children` array exists in `nodes`.
+2. **Inverse:** For every non-root node, `nodes[node.parentId]` exists (unless `parentId` is null).
+3. **Mutual listing:** If `child.parentId === parent.id`, then `parent.children` should include `child.id` (the store’s `createNodesAction` enforces this for new nodes; hand files should match).
+4. **No dangling references:** No `wallId` on doors/windows pointing to missing walls.
+5. **Single structural root:** Prefer one site in `rootNodeIds`; building `parentId` = that site; each level’s `parentId` = its building.
+6. **Orphans:** No extra entries in `nodes` that are never referenced and have a non-null `parentId` pointing to a missing node (delete or fix).
+
+### Container `children` typing (schema vs export)
+
+- Zod `LevelNode` lists specific child id types; **real exports** may still contain **item** ids on the level — treat exported JSON as truth and keep `parentId` consistent.
+- `WallNode` schema defaults `children` to item ids; **runtime walls** also list **door** and **window** ids in `children` after tools run.
+
+### Exporting and loading in app code
+
+```typescript
+import { useScene } from '@pascal-app/core'
+
+const { nodes, rootNodeIds } = useScene.getState()
+const sceneGraph = { nodes, rootNodeIds }
+
+useScene.getState().setScene(sceneGraph.nodes, sceneGraph.rootNodeIds)
+```
+
+### Reference demo file
+
+`apps/editor/public/demos/demo_1.json` is maintained as a **complete** example: `rootNodeIds` points at a **site**, building and levels have correct `parentId`, and a parametric **`door`** illustrates wall-local placement and `wall.children`.
+
+---
+
 ## Floorplan Import/Export Workflow
 
 ### Multimodal floorplan image to export JSON
@@ -67,269 +173,151 @@ When the user (or task) provides a **floorplan image** (PNG, JPG, PDF page raste
 1. **Use multimodal / vision** — Describe and measure the drawing from the image: wall centerlines or thick wall strokes, **room boundaries** (zones), **door** swings and openings, **window** symbols and sill/header cues, stairs, fixtures, and any **dimension strings**, scale bars, or grid spacing.
 2. **Relative geometry first** — Even without printed dimensions, infer **topology** (which walls bound which room, door/window placement along a wall as a fraction of wall length) and **proportions** (room A is ~1.2× as wide as room B). Convert to meters only after fixing scale (next step).
 3. **Scale when dimensions are missing** — If the plan has **no usable dimensions or scale bar**, **anchor scale to the master bedroom (primary suite)**: assume it is **3 m × 3 m** in real space. Map that room’s pixel width/depth to 3 m to obtain meters-per-pixel (or uniform scale); apply the same scale to the rest of the level. If no room is clearly the master bedroom, pick the **largest labeled bedroom** and still apply **3 m × 3 m** as the calibration anchor unless the user specifies otherwise.
-4. **Build the scene** — Follow [Creating Nodes from Floorplan Image](#creating-nodes-from-floorplan-image): hierarchy `Site → Building → Level`, then walls, slabs, zones, doors, windows, using [Default Dimensions for Floorplan Import](#default-dimensions-for-floorplan-import) for thicknesses and opening heights where the drawing is silent.
-5. **Deliver as export JSON** — The artifact to produce (for files, demos, or handoff) is the same shape as runtime export: `{ nodes, rootNodeIds }` with flat `nodes` and correct `parentId` links — see [Exporting a Scene](#exporting-a-scene). Do not hand-roll IDs; when generating JSON in code, use `*Node.parse({ … })` and the store’s creation APIs so IDs and defaults match the app.
+4. **Build the scene** — Follow [Creating Nodes from Floorplan Image](#creating-nodes-from-floorplan-image): hierarchy `Site → Building → Level`, then walls, slabs, zones, then **doors/windows parented to walls**, using [Default Dimensions for Floorplan Import](#default-dimensions-for-floorplan-import) where the drawing is silent.
+5. **Deliver as export JSON** — Produce `{ nodes, rootNodeIds }` with **[Export JSON checklist](#parentid--children-consistency-checklist)** satisfied. Prefer `*Node.parse()` + `createNodes` in code; for hand JSON, mirror `demo_1.json` and schema files.
 
-If the user only wants JSON **without** running the editor, you may still emit a **`SceneGraph`-shaped JSON** file: synthesize nodes via the same parse shapes the app expects (match a known sample under `apps/editor/public/demos/*.plan.json` if present).
-
-### Scene Graph Format
-
-The Pascal Editor uses a flat node structure with parent references. The export/import format is:
-
-```typescript
-type SceneGraph = {
-  nodes: Record<string, AnyNode>  // Flat dictionary of all nodes
-  rootNodeIds: string[]           // Top-level nodes (usually site node)
-}
-```
-
-### Node Hierarchy
-
-When creating a scene from a floorplan image, establish this hierarchy:
-
-```
-Site (site_*) → Building (building_*) → Level (level_*) → [Walls, Slabs, Doors, Windows, Zones, Items]
-```
+You may emit a **SceneGraph-shaped** JSON without running the editor; validate against the checklist above.
 
 ### Default Dimensions for Floorplan Import
 
-When interpreting a floorplan image without explicit measurements, use these defaults (American construction standards). **Overall plan scale** (how long a wall is in meters) must still be set from dimensions on the drawing or, if none, from the **3 m × 3 m master bedroom** anchor described in [Multimodal floorplan image to export JSON](#multimodal-floorplan-image-to-export-json).
+When interpreting a floorplan image without explicit measurements, use these defaults (American construction standards). **Overall plan scale** must still be set from dimensions on the drawing or, if none, from the **3 m × 3 m master bedroom** anchor.
 
 | Element | Default Value | Notes |
 |---------|---------------|-------|
-| Wall height | 2.0m | Default ceiling height (US standard finished height ~2.44m / 8ft, but 2.0m is the editor default) |
-| Wall thickness | 0.12m | Interior partition walls (2×4 framing: 3.5" studs + 5/8" drywall each side ≈ 4.75" / ~0.12m) |
-| Exterior wall thickness | 0.165m | Exterior walls (2×6 framing: 5.5" studs + sheathing + drywall ≈ 6.5" / ~0.165m) |
-| Door width | 0.91m | Standard interior door (36") |
-| Door height | 2.03m | Standard door height (80" / 6ft 8in) |
-| Window height | 1.22m | Standard window (48") |
+| Wall height | 2.0m | Editor default; US finished ceiling often ~2.44m / 8ft |
+| Wall thickness | 0.12m | Interior 2×4 wall ~0.12m |
+| Exterior wall thickness | 0.165m | Exterior 2×6 ~0.165m |
+| Door width | 0.91m | Standard interior (36") |
+| Door height | 2.03m | 80" slab; schema default for `DoorNode` is 2.1m — pick one per file |
+| Window height | 1.22m | Common 48" |
 | Window sill height | 0.91m | From floor (36") |
-| Floor thickness (slab) | 0.15m | Default slab elevation |
+| Slab elevation | 0.05m | Slight lift above 0 to reduce z-fighting |
 
 ### Creating Nodes from Floorplan Image
 
-**Step 1: Analyze the floorplan**
-- Identify wall lines (exterior vs interior)
-- Detect door/window openings (swing arcs, gaps in wall lines, glazing symbols)
-- Recognize room boundaries for zones (labels, color fills, tile patterns)
-- Fix scale: use dimension text or scale bar when present; **otherwise anchor so the master bedroom is 3 m × 3 m** (see [Multimodal floorplan image to export JSON](#multimodal-floorplan-image-to-export-json))
+**Step 1 — Analyze** — Walls, openings, rooms, scale (same as earlier workflow).
 
-**Step 2: Create the hierarchy**
-```typescript
-import { SiteNode, BuildingNode, LevelNode, WallNode, SlabNode } from '@pascal-app/core'
-import { useScene } from '@pascal-app/core'
+**Step 2 — Hierarchy** — Use the Site → Building → Level `createNodes` batch shown in [Site → Building → Level](#site--building--level).
 
-// Create hierarchy from top down
-const level = LevelNode.parse({ level: 0, children: [] })
-const building = BuildingNode.parse({ children: [level.id] })
-const site = SiteNode.parse({ children: [building] })
+**Step 3 — Walls** — `WallNode.parse({ start, end, height, thickness, … })` then `createNode(wall, level.id)`.
 
-// Get the scene actions
-const { createNodes } = useScene.getState()
+**Step 4 — Slabs / zones** — `SlabNode` / `ZoneNode` with polygons `[x,z][]`; parent = **level**.
 
-// Create all nodes in a single batch
-createNodes([
-  { node: site, parentId: null },
-  { node: building, parentId: site.id },
-  { node: level, parentId: building.id },
-])
-```
+**Step 5 — Parametric doors and windows**
 
-**Step 3: Create walls from detected lines**
-```typescript
-// Wall coordinates are [x, z] tuples in level coordinate system
-// Y is implicitly 0 (floor) to height (ceiling)
-const wall = WallNode.parse({
-  name: 'Wall 1',
-  start: [0, 0],      // [x, z] in meters
-  end: [5, 0],        // [x, z] in meters
-  height: 2.0,        // meters (editor default; US finish ceiling ~2.44m)
-  thickness: 0.12,    // meters — interior 2×4 wall (US standard ~4.75" / 0.12m)
-})
-
-createNode(wall, level.id)
-```
-
-**Step 4: Create slabs for rooms**
-```typescript
-// Slabs use polygon boundaries [x, z][]
-const slab = SlabNode.parse({
-  name: 'Living Room Floor',
-  polygon: [
-    [0, 0],     // corners in CCW or CW order
-    [5, 0],
-    [5, 4],
-    [0, 4],
-  ],
-  holes: [],    // for interior cutouts
-  elevation: 0.05,  // slightly above 0 to avoid z-fighting
-})
-
-createNode(slab, level.id)
-```
-
-**Step 5: Create doors and windows**
 ```typescript
 import { DoorNode, WindowNode } from '@pascal-app/core'
 
-// Doors are placed at wall-relative positions
 const door = DoorNode.parse({
-  position: [2.5, 1.015, 0],  // [along wall, height/2, 0]
-  width: 0.91,                 // 36" standard interior door
-  height: 2.03,                // 80" / 6ft 8in standard door height
+  position: [2.5, doorHeight / 2, 0], // along wall, vertical center, through-wall offset
+  width: 0.91,
+  height: 2.03,
   wallId: wall.id,
   side: 'front',
   hingesSide: 'left',
   swingDirection: 'inward',
 })
 
-createNode(door, level.id)
+createNode(door, wall.id) // parent is the wall
 
-// Windows are similar
 const window = WindowNode.parse({
-  position: [1.5, 1.5, 0],  // center at 1.5m height
+  position: [1.5, 1.5, 0], // center in wall-local space
   width: 1.2,
   height: 1.2,
   wallId: wall.id,
   side: 'front',
 })
 
-createNode(window, level.id)
+createNode(window, wall.id)
 ```
 
-**Step 6: Create zones for rooms**
-```typescript
-import { ZoneNode } from '@pascal-app/core'
+**Step 6 — Free-standing items** — Furniture on the floor: `createNode(item, level.id)`; `position` is `[x, y, z]` in **level** space (world-like with Y up).
 
-const zone = ZoneNode.parse({
-  name: 'Living Room',
-  polygon: [
-    [0, 0],
-    [5, 0],
-    [5, 4],
-    [0, 4],
-  ],
-  color: '#3b82f6',
-})
-
-createNode(zone, level.id)
-```
-
-### Exporting a Scene
-
-The scene graph can be exported as JSON. This is the **target format** for a multimodal floorplan pass: after inferring walls, zones, doors, and windows from an image, populate the store (or construct parsed nodes) and serialize the same structure.
-
-**Export JSON shape:** top-level `{ "nodes": { … }, "rootNodeIds": [ … ] }` — each value in `nodes` is a serialized node (types `site`, `building`, `level`, `wall`, `slab`, `door`, `window`, `zone`, etc.) with `parentId` and any `children` ids consistent with the rest of the graph.
-
-```typescript
-import { useScene } from '@pascal-app/core'
-
-function exportScene(): SceneGraph {
-  const { nodes, rootNodeIds } = useScene.getState()
-  return { nodes, rootNodeIds }
-}
-
-// Save to file
-const sceneGraph = exportScene()
-const blob = new Blob([JSON.stringify(sceneGraph, null, 2)], { type: 'application/json' })
-```
-
-### Loading a Scene
-
-```typescript
-import { useScene } from '@pascal-app/core'
-
-function loadScene(sceneGraph: SceneGraph) {
-  const { setScene } = useScene.getState()
-  setScene(sceneGraph.nodes, sceneGraph.rootNodeIds)
-}
-
-// Or from JSON file
-const sceneGraph = JSON.parse(await file.text())
-loadScene(sceneGraph)
-```
-
-### Complete Floorplan Import Example
+### Complete floorplan import example (correct wall parenting)
 
 ```typescript
 import {
-  SiteNode, BuildingNode, LevelNode, WallNode,
-  SlabNode, DoorNode, ZoneNode, useScene
+  SiteNode,
+  BuildingNode,
+  LevelNode,
+  WallNode,
+  SlabNode,
+  DoorNode,
+  ZoneNode,
+  useScene,
+  type AnyNode,
 } from '@pascal-app/core'
 
-/**
- * Import a floorplan from image analysis results
- * @param walls - Array of {start: [x,z], end: [x,z], thickness?: number}
- * @param rooms - Array of {name: string, polygon: [x,z][]}
- * @param scale - Meters per pixel (or estimated)
- */
 export function importFloorplan(
-  walls: Array<{start: [number, number], end: [number, number], exterior?: boolean}>,
-  rooms: Array<{name: string, polygon: [number, number][]}>,
-  scale: number = 0.02  // default: 2cm per pixel if unknown
-): SceneGraph {
+  walls: Array<{ start: [number, number]; end: [number, number]; exterior?: boolean }>,
+  rooms: Array<{ name: string; polygon: [number, number][] }>,
+  scale = 0.02,
+): { nodes: Record<string, AnyNode>; rootNodeIds: string[] } {
   const { createNodes } = useScene.getState()
 
-  // Create hierarchy
   const level = LevelNode.parse({ level: 0 })
   const building = BuildingNode.parse({ children: [level.id] })
   const site = SiteNode.parse({ children: [building] })
 
-  const nodes: {node: AnyNode, parentId?: string}[] = [
-    { node: site },
+  const ops: { node: AnyNode; parentId?: string }[] = [
+    { node: site, parentId: null },
     { node: building, parentId: site.id },
     { node: level, parentId: building.id },
   ]
 
-  // Create walls (scaled)
+  const wallByIndex: WallNode[] = []
   for (const w of walls) {
     const wall = WallNode.parse({
       start: [w.start[0] * scale, w.start[1] * scale],
       end: [w.end[0] * scale, w.end[1] * scale],
-      thickness: w.exterior ? 0.165 : 0.12,  // US standard: exterior 2×6 ~0.165m, interior 2×4 ~0.12m
+      thickness: w.exterior ? 0.165 : 0.12,
       height: 2.0,
     })
-    nodes.push({ node: wall, parentId: level.id })
+    wallByIndex.push(wall)
+    ops.push({ node: wall, parentId: level.id })
   }
 
-  // Create slabs and zones for rooms
   for (const room of rooms) {
-    const scaledPolygon = room.polygon.map(([x, z]) => [x * scale, z * scale] as [number, number])
-
-    const slab = SlabNode.parse({
-      name: `${room.name} Floor`,
-      polygon: scaledPolygon,
-      elevation: 0.05,
+    const poly = room.polygon.map(([x, z]) => [x * scale, z * scale] as [number, number])
+    ops.push({
+      node: SlabNode.parse({ name: `${room.name} Floor`, polygon: poly, elevation: 0.05 }),
+      parentId: level.id,
     })
-    nodes.push({ node: slab, parentId: level.id })
-
-    const zone = ZoneNode.parse({
-      name: room.name,
-      polygon: scaledPolygon,
+    ops.push({
+      node: ZoneNode.parse({ name: room.name, polygon: poly }),
+      parentId: level.id,
     })
-    nodes.push({ node: zone, parentId: level.id })
   }
 
-  createNodes(nodes)
+  // Example: first door on first wall, centered
+  if (wallByIndex.length > 0) {
+    const w0 = wallByIndex[0]!
+    const dx = w0.end[0] - w0.start[0]
+    const dz = w0.end[1] - w0.start[1]
+    const len = Math.hypot(dx, dz)
+    const doorW = 0.91
+    const doorH = 2.03
+    const along = Math.max(doorW / 2, Math.min(len - doorW / 2, len / 2))
+    const door = DoorNode.parse({
+      position: [along, doorH / 2, 0],
+      width: doorW,
+      height: doorH,
+      wallId: w0.id,
+      side: 'front',
+    })
+    ops.push({ node: door, parentId: w0.id })
+  }
 
+  createNodes(ops)
   return { nodes: useScene.getState().nodes, rootNodeIds: [site.id] }
 }
 ```
 
-### Key Points for AI Agents
+### Key points for agents
 
-1. **Floorplan images** — If the user attaches or references a floorplan raster, use **vision / multimodal** analysis to extract walls, **zones** (rooms), **doors**, **windows**, and any printed dimensions; then produce **`{ nodes, rootNodeIds }` export JSON** (or equivalent scene construction). With **no** usable dimensions on the drawing, **scale the plan so the master bedroom is 3 m × 3 m** (see [Multimodal floorplan image to export JSON](#multimodal-floorplan-image-to-export-json)).
-
-2. **Always use `.parse()`** - Never construct nodes manually; use `WallNode.parse()`, `SlabNode.parse()`, etc. to ensure IDs and defaults are generated correctly.
-
-3. **Coordinates are in meters** - The editor uses real-world meters. Convert pixels to meters using an estimated or provided scale.
-
-4. **Wall coordinates are 2D** - Walls use `[x, z]` tuples. Height is a separate property. The Y-axis is up (height).
-
-5. **Slab/Zone polygons are arrays of [x, z]** - Define room boundaries as closed polygons (first point does not need to repeat at the end).
-
-6. **Batch creation with `createNodes`** - For importing many nodes, use `createNodes([{node, parentId}, ...])` rather than individual `createNode` calls.
-
-7. **Parent IDs establish hierarchy** - All walls, slabs, doors, windows, zones, and items must have `parentId` set to a level node.
-
-8. **Export includes everything** - The `nodes` dictionary contains all nodes flat; hierarchy is reconstructed via `parentId` references.
+1. **Export JSON is a flat `nodes` map plus `rootNodeIds`** — hierarchy = `parentId` + container `children`.
+2. **Site root** — `rootNodeIds: [siteId]`; building.parentId = site; levels parented to building.
+3. **Doors/windows** — Wall-local `position`; `parentId` and `wallId` = wall; include id in `wall.children`.
+4. **Floor furniture** — `parentId` = level.
+5. **Always prefer `NodeType.parse`** when generating from code.
+6. **Validate** with the [checklist](#parentid--children-consistency-checklist) before shipping hand-written JSON.

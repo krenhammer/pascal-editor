@@ -1,254 +1,180 @@
-# Pascal Editor - Setup Guide
+# Pascal Editor — Setup Guide
 
-This guide will help you set up the Pascal Editor with authentication and database integration.
+How to run the monorepo locally: Next.js editor, shared packages (`core`, `viewer`, `editor`, `ui`), and optional local Supabase (Postgres + API) via Docker.
 
 ## Prerequisites
 
-- Node.js 18+ or Bun 1.3+
-- Docker Desktop (for running Supabase locally)
+- **Bun** 1.3+ (see root `package.json` `packageManager`)
+- **Docker** — Supabase local stack runs in containers (`bun x supabase start`)
 
-## Quick Start
+## Quick start
 
-### 1. Install Dependencies
+### 1. Install dependencies
 
 ```bash
 bun install
 ```
 
-This installs the Supabase CLI as a dev dependency - no need for global installation!
+### 2. Supabase (local database and API)
 
-### 2. Start Supabase Local Development
+The Supabase project lives at the **repository root** in `supabase/` (`config.toml`, `seed.sql`, and eventually `migrations/`).
 
-```bash
-bun db:start
-```
-
-This will start a local Supabase instance. You'll see output like:
-
-```
-API URL: http://127.0.0.1:54321
-DB URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-Studio URL: http://127.0.0.1:54323
-Anon key: eyJh...
-Service role key: eyJh...
-```
-
-### 4. Configure Environment Variables
-
-Create `apps/editor/.env.local` with the following variables:
+**First time only** — if `supabase/config.toml` is missing:
 
 ```bash
-# Database Connection (Supabase local)
-POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
-
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
-
-# Better Auth (generate your own secret with: openssl rand -base64 32)
-BETTER_AUTH_SECRET=<generate_with_command_below>
-BETTER_AUTH_URL=http://localhost:3000
-
-# Google Maps (optional, for address search)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your_google_maps_key>
+bun x supabase init
 ```
 
-Generate a secret for `BETTER_AUTH_SECRET`:
+Start the stack:
+
+```bash
+bun x supabase start
+```
+
+You should see the API URL, DB URL, Studio URL, and keys. To print machine-friendly values for `.env`:
+
+```bash
+bun x supabase status -o env
+```
+
+Use `DB_URL` as `POSTGRES_URL`, `API_URL` as `NEXT_PUBLIC_SUPABASE_URL`, `ANON_KEY` as `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SERVICE_ROLE_KEY` as `SUPABASE_SERVICE_ROLE_KEY`.
+
+Stop when finished:
+
+```bash
+bun x supabase stop
+```
+
+Default ports (from `supabase/config.toml`) are typically **54321** (API), **54322** (Postgres), **54323** (Studio). Change them in `config.toml` if they conflict on your machine, then align `apps/editor/.env.local`.
+
+### 3. Environment variables
+
+Create **`apps/editor/.env.local`** (see also root `.env.example`).
+
+**Required** (see `apps/editor/env.mjs`):
+
+| Variable | Purpose |
+|----------|---------|
+| `POSTGRES_URL` | Postgres connection string (e.g. from `supabase status` `DB_URL`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role JWT (local demo or project dashboard) |
+| `BETTER_AUTH_SECRET` | Secret for Better Auth (`openssl rand -base64 32`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase API URL |
+
+**Strongly recommended for local dev:**
+
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | Defaults in scripts; editor dev uses **3002** in `apps/editor/package.json` |
+| `NEXT_PUBLIC_APP_URL` | Base URL for the app, e.g. `http://localhost:3002` |
+| `BETTER_AUTH_URL` | Same origin as the app in dev, e.g. `http://localhost:3002` |
+
+**Optional:**
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key (optional in `env.mjs`; set for client Supabase usage) |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Address autocomplete / maps features |
+| `NEXT_PUBLIC_VOWEL_APP_ID` | Vowel integration; if unset, the Vowel wrapper skips the provider |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth (optional) |
+| `RESEND_API_KEY` | Email (optional) |
+
+Generate `BETTER_AUTH_SECRET`:
 
 ```bash
 openssl rand -base64 32
 ```
 
-### 5. Run Database Migrations
+**Local Supabase JWT demo keys** (unchanged across default local installs) — only for local dev:
 
 ```bash
-bun db:reset
+# NEXT_PUBLIC_SUPABASE_ANON_KEY (example)
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+
+# SUPABASE_SERVICE_ROLE_KEY (example)
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
 ```
 
-This will create all necessary tables for authentication and properties.
+Prefer `bun x supabase status -o env` after `supabase start` so URLs and any CLI-specific keys stay in sync.
 
-### 6. Start the Development Server
+**Root `.env` (optional):** `bun dev` runs `turbo` with `set -a && . ./.env` when present. Use it for shared secrets across tasks if needed; the Next app loads **`apps/editor/.env.local`** via `dotenv-cli`.
+
+**Builds / CI:** `SKIP_ENV_VALIDATION=1` skips strict checks in `env.mjs` when vars are injected only at deploy time.
+
+### 4. Run the development server
 
 ```bash
 bun dev
 ```
 
-The editor will be available at http://localhost:3000
+This runs **Turborepo** `dev`: TypeScript watch for `@pascal-app/core` and `@pascal-app/viewer`, and **Next.js** for the editor.
 
-## Monorepo Structure
+- **Editor:** http://localhost:3002 (see `apps/editor` `next dev --port 3002`)
+- **Supabase Studio:** http://127.0.0.1:54323 (when Supabase is running)
+
+### 5. Database migrations (when you add them)
+
+SQL migrations belong in **`supabase/migrations/`** at the repo root.
+
+```bash
+bun x supabase migration new your_migration_name
+# edit supabase/migrations/<timestamp>_your_migration_name.sql
+bun x supabase db reset   # applies migrations + seed (see supabase/config.toml)
+```
+
+There is no separate `packages/db` app in this monorepo; Drizzle or other ORM wiring, if used, lives in application code and should point at `POSTGRES_URL`.
+
+## Monorepo layout
 
 ```
 .
 ├── apps/
-│   └── editor/              # Next.js editor application
-│       ├── app/
-│       │   └── api/auth/    # Better Auth API routes
-│       ├── components/      # UI components
-│       └── features/
-│           └── cloud-sync/  # Cloud sync feature
+│   └── editor/                 # Next.js 16 editor app
 ├── packages/
-│   ├── auth/               # @pascal-app/auth - Authentication package
-│   │   ├── src/
-│   │   │   ├── server.ts   # Better Auth server config
-│   │   │   └── client.ts   # Better Auth client
-│   │   └── README.md
-│   ├── db/                 # @pascal-app/db - Database package
-│   │   ├── src/
-│   │   │   ├── client.ts   # Supabase client (with RLS)
-│   │   │   ├── server.ts   # Supabase admin client
-│   │   │   └── types.ts    # Database types
-│   │   ├── supabase/
-│   │   │   ├── config.toml
-│   │   │   └── migrations/ # SQL migrations
-│   │   └── README.md
-│   ├── core/               # @pascal-app/core - Core editor logic
-│   ├── viewer/             # @pascal-app/viewer - 3D viewer
-│   └── ui/                 # @repo/ui - Shared UI components
-└── turbo.json
+│   ├── core/                   # @pascal-app/core — scene schema, store, systems
+│   ├── viewer/                 # @pascal-app/viewer — R3F canvas
+│   ├── editor/                 # @pascal-app/editor — shared editor UI/logic
+│   └── ui/                     # @repo/ui — shared components
+├── supabase/                   # Local Supabase: config.toml, seed.sql, migrations/
+├── turbo.json
+└── package.json
 ```
 
-## Database Schema
+## Production deployment (outline)
 
-### Auth Tables (Better Auth)
+1. Create a project at [supabase.com](https://supabase.com) and note the project URL, anon key, service role key, and Postgres connection string.
+2. Set the same environment variables on your host (Vercel, etc.) as in `.env.local`, using production values.
+3. From the repo root, link and push migrations when you have them:
 
-- **users** - User accounts with email and profile
-- **sessions** - Active authentication sessions
-- **accounts** - OAuth provider accounts (for future use)
-- **verification_tokens** - Magic link tokens
-
-### Application Tables
-
-- **properties** - User properties
-  - `id`: Property ID
-  - `name`: Property name
-  - `owner_id`: User ID (foreign key to users)
-
-- **properties_addresses** - Property addresses with Google Maps data
-  - `id`: Address ID
-  - `property_id`: Property ID (foreign key)
-  - `formatted_address`: Full address
-  - `latitude`, `longitude`: GPS coordinates
-  - Plus detailed address components (street, city, state, etc.)
-
-- **properties_models** - Scene graph models (versions)
-  - `id`: Model ID
-  - `property_id`: Property ID (foreign key)
-  - `name`: Model name
-  - `version`: Version number
-  - `draft`: Draft status
-  - `scene_graph`: JSONB scene graph data
-
-## Features
-
-### Authentication
-
-- **Magic Link Sign-In**: Passwordless authentication via email
-- **Session Management**: 7-day sessions with automatic refresh
-- **Cookie-based**: Secure httpOnly cookies
-
-### Property Management
-
-- **Create Properties**: Add properties with real-world addresses
-- **Google Maps Integration**: Address autocomplete and geocoding
-- **Switch Properties**: Seamlessly switch between properties
-
-### Scene Management
-
-- **Auto-Save**: Changes saved every 2 seconds
-- **Scene Loading**: Automatic scene loading when switching properties
-- **Version Control**: Models are versioned for future rollback support
-
-## Development Workflow
-
-### Making Database Changes
-
-1. Create a new migration:
    ```bash
-   cd packages/db
-   supabase migration new your_migration_name
+   bun x supabase link --project-ref <your-project-ref>
+   bun x supabase db push
    ```
 
-2. Edit the migration file in `supabase/migrations/`
-
-3. Apply the migration:
-   ```bash
-   supabase db reset
-   ```
-
-### Updating Database Types
-
-After changing the database schema, regenerate TypeScript types:
-
-1. Update `packages/db/src/types.ts` to match your new schema
-2. Run `bun install` to update type checking
-
-### Testing Authentication
-
-1. Start the editor: `bun dev`
-2. Click "Save to cloud" button
-3. Enter your email
-4. Check console for magic link (not sent via email in development)
-5. Click the link to authenticate
-
-## Supabase Studio
-
-Access the local Supabase Studio at: http://127.0.0.1:54323
-
-Use this to:
-- Browse and edit tables
-- Run SQL queries
-- View logs
-- Manage RLS policies
-- Test database functions
-
-## Production Deployment
-
-For production deployment:
-
-1. Create a Supabase project at https://supabase.com
-2. Get your production database connection string
-3. Update environment variables in your hosting platform
-4. Link and push migrations:
-   ```bash
-   cd packages/db
-   bunx supabase link --project-ref your-project-ref
-   bunx supabase db push
-   ```
-5. Configure email provider in `packages/auth/src/server.ts`
+4. Configure Better Auth (secret, public URL, email/OAuth providers) wherever your server auth is defined.
 
 ## Troubleshooting
 
-### "Missing POSTGRES_URL" error
+### `POSTGRES_URL` / Supabase env errors
 
-Make sure you've set `POSTGRES_URL` in `apps/editor/.env.local` to your Supabase connection string.
+Ensure `apps/editor/.env.local` exists and matches `bun x supabase status -o env` (or your hosted Supabase dashboard). URLs and ports must match `supabase/config.toml` if you changed default ports.
 
-### Supabase not starting
+### Supabase will not start
 
-Try stopping and restarting:
-```bash
-bun db:stop
-bun db:start
-```
+- Confirm Docker is running.
+- Try `bun x supabase stop` then `bun x supabase start`.
+- Check nothing else is bound to ports **54321–54324** (or your customized ports).
 
-### Migration errors
+### Port already in use (editor)
 
-Reset the database:
-```bash
-cd packages/db
-supabase db reset
-```
+The editor defaults to **3002**. Free it or change the port in `apps/editor/package.json` `dev` / `build` scripts and update `NEXT_PUBLIC_APP_URL` / `BETTER_AUTH_URL`.
 
-### Auth not working
+### `env.mjs` validation during build
 
-1. Check that Better Auth API route exists at `apps/editor/app/api/auth/[...all]/route.ts`
-2. Verify `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` are set
-3. Check console for magic link URLs in development
+Use `SKIP_ENV_VALIDATION=1` only when the platform injects env at runtime and validation should not run at build time.
 
-## Next Steps
+## Next steps
 
-- Configure email provider for magic links
-- Add OAuth providers (Google, GitHub, etc.)
-- Set up production Supabase project
-- Configure RLS policies for additional security
-- Add more property features (sharing, collaboration, etc.)
+- Add SQL migrations under `supabase/migrations/` for any persistence you need.
+- Wire Better Auth routes and email (e.g. Resend) when you enable sign-in in the app.
+- Set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` if you use address or map features.
+- Commit `supabase/config.toml` (and migrations) so the team shares the same local stack; keep secrets out of git (use `.env.local` only).

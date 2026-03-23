@@ -1,6 +1,6 @@
 ---
 name: pascal-editor
-description: Guides work on the Pascal Editor V2 monorepo (Turborepo, core/viewer/editor split, scene graph, R3F). Use when editing this repo, adding nodes/systems/renderers/tools, or answering architecture questions. Does not cover vowel-* integration unless the user explicitly asks.
+description: Guides work on the Pascal Editor V2 monorepo (Turborepo, core/viewer/editor split, scene graph, R3F). Use when editing this repo, adding nodes/systems/renderers/tools, turning floorplan images into export JSON (multimodal vision for zones/doors/windows + scale), or answering architecture questions. Does not cover vowel-* integration unless the user explicitly asks.
 ---
 
 # Pascal Editor V2
@@ -60,6 +60,18 @@ Three.js (WebGPU) + R3F, Next.js 16, React 19, Zustand + Zundo, Radix + Tailwind
 
 ## Floorplan Import/Export Workflow
 
+### Multimodal floorplan image to export JSON
+
+When the user (or task) provides a **floorplan image** (PNG, JPG, PDF page raster, etc.), treat it as a vision input:
+
+1. **Use multimodal / vision** — Describe and measure the drawing from the image: wall centerlines or thick wall strokes, **room boundaries** (zones), **door** swings and openings, **window** symbols and sill/header cues, stairs, fixtures, and any **dimension strings**, scale bars, or grid spacing.
+2. **Relative geometry first** — Even without printed dimensions, infer **topology** (which walls bound which room, door/window placement along a wall as a fraction of wall length) and **proportions** (room A is ~1.2× as wide as room B). Convert to meters only after fixing scale (next step).
+3. **Scale when dimensions are missing** — If the plan has **no usable dimensions or scale bar**, **anchor scale to the master bedroom (primary suite)**: assume it is **3 m × 3 m** in real space. Map that room’s pixel width/depth to 3 m to obtain meters-per-pixel (or uniform scale); apply the same scale to the rest of the level. If no room is clearly the master bedroom, pick the **largest labeled bedroom** and still apply **3 m × 3 m** as the calibration anchor unless the user specifies otherwise.
+4. **Build the scene** — Follow [Creating Nodes from Floorplan Image](#creating-nodes-from-floorplan-image): hierarchy `Site → Building → Level`, then walls, slabs, zones, doors, windows, using [Default Dimensions for Floorplan Import](#default-dimensions-for-floorplan-import) for thicknesses and opening heights where the drawing is silent.
+5. **Deliver as export JSON** — The artifact to produce (for files, demos, or handoff) is the same shape as runtime export: `{ nodes, rootNodeIds }` with flat `nodes` and correct `parentId` links — see [Exporting a Scene](#exporting-a-scene). Do not hand-roll IDs; when generating JSON in code, use `*Node.parse({ … })` and the store’s creation APIs so IDs and defaults match the app.
+
+If the user only wants JSON **without** running the editor, you may still emit a **`SceneGraph`-shaped JSON** file: synthesize nodes via the same parse shapes the app expects (match a known sample under `apps/editor/public/demos/*.plan.json` if present).
+
 ### Scene Graph Format
 
 The Pascal Editor uses a flat node structure with parent references. The export/import format is:
@@ -81,7 +93,7 @@ Site (site_*) → Building (building_*) → Level (level_*) → [Walls, Slabs, D
 
 ### Default Dimensions for Floorplan Import
 
-When interpreting a floorplan image without explicit measurements, use these relative defaults (American construction standards):
+When interpreting a floorplan image without explicit measurements, use these defaults (American construction standards). **Overall plan scale** (how long a wall is in meters) must still be set from dimensions on the drawing or, if none, from the **3 m × 3 m master bedroom** anchor described in [Multimodal floorplan image to export JSON](#multimodal-floorplan-image-to-export-json).
 
 | Element | Default Value | Notes |
 |---------|---------------|-------|
@@ -98,9 +110,9 @@ When interpreting a floorplan image without explicit measurements, use these rel
 
 **Step 1: Analyze the floorplan**
 - Identify wall lines (exterior vs interior)
-- Detect door/window openings
-- Recognize room boundaries for zones
-- Estimate scale (assume a standard room is ~4m wide if no scale reference)
+- Detect door/window openings (swing arcs, gaps in wall lines, glazing symbols)
+- Recognize room boundaries for zones (labels, color fills, tile patterns)
+- Fix scale: use dimension text or scale bar when present; **otherwise anchor so the master bedroom is 3 m × 3 m** (see [Multimodal floorplan image to export JSON](#multimodal-floorplan-image-to-export-json))
 
 **Step 2: Create the hierarchy**
 ```typescript
@@ -205,7 +217,9 @@ createNode(zone, level.id)
 
 ### Exporting a Scene
 
-The scene graph can be exported as JSON:
+The scene graph can be exported as JSON. This is the **target format** for a multimodal floorplan pass: after inferring walls, zones, doors, and windows from an image, populate the store (or construct parsed nodes) and serialize the same structure.
+
+**Export JSON shape:** top-level `{ "nodes": { … }, "rootNodeIds": [ … ] }` — each value in `nodes` is a serialized node (types `site`, `building`, `level`, `wall`, `slab`, `door`, `window`, `zone`, etc.) with `parentId` and any `children` ids consistent with the rest of the graph.
 
 ```typescript
 import { useScene } from '@pascal-app/core'
@@ -304,16 +318,18 @@ export function importFloorplan(
 
 ### Key Points for AI Agents
 
-1. **Always use `.parse()`** - Never construct nodes manually; use `WallNode.parse()`, `SlabNode.parse()`, etc. to ensure IDs and defaults are generated correctly.
+1. **Floorplan images** — If the user attaches or references a floorplan raster, use **vision / multimodal** analysis to extract walls, **zones** (rooms), **doors**, **windows**, and any printed dimensions; then produce **`{ nodes, rootNodeIds }` export JSON** (or equivalent scene construction). With **no** usable dimensions on the drawing, **scale the plan so the master bedroom is 3 m × 3 m** (see [Multimodal floorplan image to export JSON](#multimodal-floorplan-image-to-export-json)).
 
-2. **Coordinates are in meters** - The editor uses real-world meters. Convert pixels to meters using an estimated or provided scale.
+2. **Always use `.parse()`** - Never construct nodes manually; use `WallNode.parse()`, `SlabNode.parse()`, etc. to ensure IDs and defaults are generated correctly.
 
-3. **Wall coordinates are 2D** - Walls use `[x, z]` tuples. Height is a separate property. The Y-axis is up (height).
+3. **Coordinates are in meters** - The editor uses real-world meters. Convert pixels to meters using an estimated or provided scale.
 
-4. **Slab/Zone polygons are arrays of [x, z]** - Define room boundaries as closed polygons (first point does not need to repeat at the end).
+4. **Wall coordinates are 2D** - Walls use `[x, z]` tuples. Height is a separate property. The Y-axis is up (height).
 
-5. **Batch creation with `createNodes`** - For importing many nodes, use `createNodes([{node, parentId}, ...])` rather than individual `createNode` calls.
+5. **Slab/Zone polygons are arrays of [x, z]** - Define room boundaries as closed polygons (first point does not need to repeat at the end).
 
-6. **Parent IDs establish hierarchy** - All walls, slabs, doors, windows, zones, and items must have `parentId` set to a level node.
+6. **Batch creation with `createNodes`** - For importing many nodes, use `createNodes([{node, parentId}, ...])` rather than individual `createNode` calls.
 
-7. **Export includes everything** - The `nodes` dictionary contains all nodes flat; hierarchy is reconstructed via `parentId` references.
+7. **Parent IDs establish hierarchy** - All walls, slabs, doors, windows, zones, and items must have `parentId` set to a level node.
+
+8. **Export includes everything** - The `nodes` dictionary contains all nodes flat; hierarchy is reconstructed via `parentId` references.

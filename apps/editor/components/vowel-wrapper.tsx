@@ -1,19 +1,30 @@
 'use client'
 
-import { createNextJSAdapters } from '@vowel.to/client'
+import { emitter, LevelNode } from '@pascal-app/core'
+import {
+  getVowelBridgeProjectId,
+  setVowelBridgeProjectId,
+  VOWEL_OPEN_LEVEL_UPLOAD_EVENT,
+  VOWEL_REFERENCE_STORAGE_DELETE_EVENT,
+} from '@pascal-app/editor'
+import { createNextJSAdapters, Vowel } from '@vowel.to/client'
 import { useSyncContext, VowelAgent, VowelProvider } from '@vowel.to/client/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const ROUTES = [{ path: '/', description: 'Editor - Main 3D building editor' }]
 
-interface VowelInstance {
-  updateContext: (context: any) => void
-  registerAction: (name: string, config: any, handler: any) => void
-}
+/** Subset used by custom actions; matches Vowel instance API. */
+type VowelClient = Pick<Vowel, 'updateContext' | 'registerAction'>
 
-let vowelInstance: VowelInstance | null = null
-let initialized = false
+/** Standard JSON-serializable result shape for Vowel `registerAction` handlers. */
+type VowelActionResult = {
+  success: boolean
+  message?: string
+  error?: string
+  levelId?: string
+  levelIndex?: number
+}
 
 function getStore(name: string) {
   if (typeof window === 'undefined') return null
@@ -43,15 +54,27 @@ function buildVowelContext() {
 
   try {
     const getEditorState = getStore('editor')
+    const getViewerState = getStore('viewer')
     const phase = getEditorState?.()?.phase || 'structure'
     const tool = getEditorState?.()?.tool || null
+    const structureLayer = getEditorState?.()?.structureLayer ?? 'elements'
+    const viewer = getViewerState?.()
     return {
       route: {
         pathname,
         pathnameLabel: pathname === '/' ? 'Editor' : pathname,
         search: window.location.search,
       },
-      editor: { phase, tool },
+      editor: { phase, tool, structureLayer, mode: getEditorState?.()?.mode },
+      viewerUi: viewer
+        ? {
+            cameraMode: viewer.cameraMode,
+            levelMode: viewer.levelMode,
+            wallMode: viewer.wallMode,
+            showScans: viewer.showScans,
+            showGuides: viewer.showGuides,
+          }
+        : undefined,
     }
   } catch {
     return {
@@ -64,7 +87,7 @@ function buildVowelContext() {
   }
 }
 
-function safeAction<T>(action: () => T, fallback: T): T {
+function safeAction<T extends VowelActionResult>(action: () => T, fallback: T): T {
   try {
     return action()
   } catch (error) {
@@ -73,7 +96,7 @@ function safeAction<T>(action: () => T, fallback: T): T {
   }
 }
 
-function registerCustomActions(vowel: VowelInstance) {
+function registerCustomActions(vowel: VowelClient) {
   vowel.registerAction(
     'getEditorState',
     {
@@ -380,13 +403,37 @@ function registerCustomActions(vowel: VowelInstance) {
             return {
               id,
               name: building?.name || id,
+              hasCamera: Boolean(building?.camera),
               levelCount: levels.length,
               levels: levels.map((lid: string) => {
                 const level = scene.nodes[lid] as any
+                const childIds: string[] = level.children || []
+                const references = childIds
+                  .filter((cid: string) => {
+                    const t = scene.nodes[cid]?.type
+                    return t === 'scan' || t === 'guide'
+                  })
+                  .map((cid: string) => {
+                    const n = scene.nodes[cid] as any
+                    return {
+                      id: cid,
+                      type: n.type as string,
+                      name:
+                        n.name || (n.type === 'scan' ? '3D Scan' : 'Guide Image'),
+                    }
+                  })
+                const zones = childIds
+                  .filter((cid: string) => scene.nodes[cid]?.type === 'zone')
+                  .map((cid: string) => {
+                    const z = scene.nodes[cid] as any
+                    return { id: cid, name: z.name, color: z.color }
+                  })
                 return {
                   id: lid,
                   name: level?.name || `Level ${level?.level}`,
                   level: level?.level,
+                  references,
+                  zones,
                 }
               }),
             }
@@ -397,11 +444,15 @@ function registerCustomActions(vowel: VowelInstance) {
 
           return {
             success: true,
+            siteId: rootId || null,
             siteName: (site as any)?.name || 'Untitled Site',
+            siteHasCamera: Boolean((site as any)?.camera),
             buildingCount: buildings.length,
             buildings: buildingInfo,
             currentBuildingId,
             currentLevelId,
+            currentZoneId: viewer?.selection?.zoneId ?? null,
+            selectedReferenceId: getStore('editor')?.()?.selectedReferenceId ?? null,
             selectedCount: viewer?.selection?.selectedIds?.length || 0,
           }
         },
@@ -455,54 +506,912 @@ function registerCustomActions(vowel: VowelInstance) {
       )
     },
   )
+
+  vowel.registerAction(
+    'addLevel',
+    {
+      description:
+        'Add a new floor level to the selected building (same as sidebar "Add level") and select it',
+      parameters: {},
+    },
+    async () => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          const getViewerState = getStore('viewer')
+          if (!getSceneState || !getViewerState) {
+            return { success: false, error: 'Stores not available' }
+          }
+          const viewer = getViewerState()
+          const scene = getSceneState()
+          const buildingId = viewer.selection?.buildingId
+          if (!buildingId) return { success: false, error: 'No building selected' }
+          const building = scene.nodes[buildingId] as {
+            type?: string
+            id: string
+            children?: string[]
+          }
+          if (!building || building.type !== 'building') {
+            return { success: false, error: 'Invalid building selection' }
+          }
+          const levelCount =
+            building.children?.filter((id) => scene.nodes[id]?.type === 'level').length ?? 0
+          const newLevel = LevelNode.parse({
+            level: levelCount,
+            children: [],
+            parentId: building.id,
+          })
+          scene.createNode(newLevel, building.id)
+          viewer.setSelection({ levelId: newLevel.id })
+          return {
+            success: true,
+            message: 'Added new level',
+            levelId: newLevel.id,
+            levelIndex: levelCount,
+          }
+        },
+        { success: false, error: 'Failed to add level' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'openUploadScanOrFloorplan',
+    {
+      description:
+        'Open the file picker to upload a .glb/.gltf scan or an image floorplan for a level (same as "Upload scan/floorplan"). Omit levelIndex to use the currently selected level.',
+      parameters: {
+        levelIndex: {
+          type: 'number',
+          description: 'Optional level index in the building (0 = ground). Omit for current level.',
+        },
+      },
+    },
+    async (args: { levelIndex?: number }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          const getSceneState = getStore('scene')
+          if (!getViewerState || !getSceneState) {
+            return { success: false, error: 'Stores not available' }
+          }
+          const viewer = getViewerState()
+          const scene = getSceneState()
+          const buildingId = viewer.selection?.buildingId
+          if (!buildingId) return { success: false, error: 'No building selected' }
+          const building = scene.nodes[buildingId] as { type?: string; children?: string[] }
+          if (!building || building.type !== 'building') {
+            return { success: false, error: 'Invalid building' }
+          }
+          const levelIds =
+            building.children?.filter((id: string) => scene.nodes[id]?.type === 'level') || []
+
+          let levelId: string | null = viewer.selection?.levelId ?? null
+
+          if (args?.levelIndex !== undefined && args.levelIndex !== null) {
+            const idx = Number(args.levelIndex)
+            if (!Number.isInteger(idx) || idx < 0 || idx >= levelIds.length) {
+              return {
+                success: false,
+                error: `Invalid levelIndex. Use 0-${levelIds.length - 1}`,
+              }
+            }
+            levelId = levelIds[idx] ?? null
+          }
+
+          if (!levelId || !levelIds.includes(levelId)) {
+            return {
+              success: false,
+              error: 'No valid level. Select a level in the sidebar or pass levelIndex.',
+            }
+          }
+
+          window.dispatchEvent(
+            new CustomEvent(VOWEL_OPEN_LEVEL_UPLOAD_EVENT, { detail: { levelId } }),
+          )
+          return {
+            success: true,
+            message: 'Opened file picker for scan or floorplan upload',
+            levelId,
+          }
+        },
+        { success: false, error: 'Failed to open upload' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setSidebarTab',
+    {
+      description:
+        'Switch the left sidebar tabs: structure (elements), furnish, or zones — matches S / F / Z shortcuts.',
+      parameters: {
+        tab: { type: 'string', description: 'structure | furnish | zones' },
+      },
+    },
+    async ({ tab }: { tab: string }) => {
+      return safeAction(
+        () => {
+          const getEditorState = getStore('editor')
+          if (!getEditorState) return { success: false, error: 'Store not available' }
+          const t = String(tab).toLowerCase()
+          if (t === 'structure') {
+            getEditorState().setPhase('structure')
+            getEditorState().setStructureLayer('elements')
+            return { success: true, message: 'Sidebar: Structure (elements)' }
+          }
+          if (t === 'furnish') {
+            getEditorState().setPhase('furnish')
+            return { success: true, message: 'Sidebar: Furnish' }
+          }
+          if (t === 'zones') {
+            getEditorState().setPhase('structure')
+            getEditorState().setStructureLayer('zones')
+            return { success: true, message: 'Sidebar: Zones' }
+          }
+          return { success: false, error: 'Invalid tab. Use: structure, furnish, zones' }
+        },
+        { success: false, error: 'Failed to set sidebar tab' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setCameraMode',
+    {
+      description: 'Set 3D view projection: perspective or orthographic (toolbar camera button)',
+      parameters: {
+        mode: { type: 'string', description: 'perspective | orthographic' },
+      },
+    },
+    async ({ mode }: { mode: string }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Store not available' }
+          const m = String(mode).toLowerCase()
+          if (m !== 'perspective' && m !== 'orthographic') {
+            return { success: false, error: 'Use perspective or orthographic' }
+          }
+          getViewerState().setCameraMode(m)
+          return { success: true, message: `Camera: ${m}` }
+        },
+        { success: false, error: 'Failed to set camera mode' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setLevelDisplayMode',
+    {
+      description:
+        'How floors are displayed: stacked, exploded, solo, or manual (toolbar layers / stack control)',
+      parameters: {
+        mode: { type: 'string', description: 'stacked | exploded | solo | manual' },
+      },
+    },
+    async ({ mode }: { mode: string }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Store not available' }
+          const m = String(mode).toLowerCase()
+          const valid = ['stacked', 'exploded', 'solo', 'manual'] as const
+          if (!valid.includes(m as (typeof valid)[number])) {
+            return { success: false, error: 'Use stacked, exploded, solo, or manual' }
+          }
+          getViewerState().setLevelMode(m as (typeof valid)[number])
+          return { success: true, message: `Level display: ${m}` }
+        },
+        { success: false, error: 'Failed to set level display mode' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setWallDisplayMode',
+    {
+      description:
+        'Wall height visualization: up (full), cutaway, or down (low) — toolbar wall mode',
+      parameters: {
+        mode: { type: 'string', description: 'up | cutaway | down' },
+      },
+    },
+    async ({ mode }: { mode: string }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Store not available' }
+          const m = String(mode).toLowerCase()
+          const valid = ['up', 'cutaway', 'down'] as const
+          if (!valid.includes(m as (typeof valid)[number])) {
+            return { success: false, error: 'Use up, cutaway, or down' }
+          }
+          getViewerState().setWallMode(m as (typeof valid)[number])
+          return { success: true, message: `Wall display: ${m}` }
+        },
+        { success: false, error: 'Failed to set wall display mode' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setShowScans',
+    {
+      description: 'Show or hide 3D scan overlays in the viewer (toolbar scans icon)',
+      parameters: {
+        visible: { type: 'boolean', description: 'true to show scans' },
+      },
+    },
+    async ({ visible }: { visible: boolean }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Store not available' }
+          getViewerState().setShowScans(Boolean(visible))
+          return { success: true, message: `Scans ${visible ? 'visible' : 'hidden'}` }
+        },
+        { success: false, error: 'Failed to set scan visibility' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setShowGuides',
+    {
+      description: 'Show or hide guide / floorplan images in the viewer (toolbar guides icon)',
+      parameters: {
+        visible: { type: 'boolean', description: 'true to show guides' },
+      },
+    },
+    async ({ visible }: { visible: boolean }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Store not available' }
+          getViewerState().setShowGuides(Boolean(visible))
+          return { success: true, message: `Guides ${visible ? 'visible' : 'hidden'}` }
+        },
+        { success: false, error: 'Failed to set guide visibility' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'cameraOrbit',
+    {
+      description: 'Orbit the camera left or right (toolbar rotate arrows)',
+      parameters: {
+        direction: {
+          type: 'string',
+          description: 'cw / clockwise / right, or ccw / counter-clockwise / left',
+        },
+      },
+    },
+    async ({ direction }: { direction: string }) => {
+      return safeAction<VowelActionResult>(
+        () => {
+          const d = String(direction).toLowerCase()
+          if (d === 'cw' || d === 'clockwise' || d === 'right') {
+            emitter.emit('camera-controls:orbit-cw', undefined)
+            return { success: true, message: 'Orbited camera clockwise' }
+          }
+          if (d === 'ccw' || d === 'counter-clockwise' || d === 'left') {
+            emitter.emit('camera-controls:orbit-ccw', undefined)
+            return { success: true, message: 'Orbited camera counter-clockwise' }
+          }
+          return { success: false, error: 'Use direction cw or ccw' }
+        },
+        { success: false, error: 'Failed to orbit camera' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'cameraTopView',
+    {
+      description: 'Set camera to top-down view (toolbar top view)',
+      parameters: {},
+    },
+    async () => {
+      return safeAction<VowelActionResult>(
+        () => {
+          emitter.emit('camera-controls:top-view', undefined)
+          return { success: true, message: 'Top view' }
+        },
+        { success: false, error: 'Failed to set top view' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'nodeCameraSnapshot',
+    {
+      description:
+        'Sidebar camera snapshot for site, building, level, or zone: view, capture (take/update), or clear. Use node ids from getSceneInfo.',
+      parameters: {
+        nodeId: { type: 'string', description: 'Site, building, level, or zone node id' },
+        operation: {
+          type: 'string',
+          description: 'view | capture | clear',
+        },
+      },
+    },
+    async ({ nodeId, operation }: { nodeId: string; operation: string }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          if (!getSceneState) return { success: false, error: 'Store not available' }
+          const scene = getSceneState()
+          const node = scene.nodes[nodeId as keyof typeof scene.nodes] as
+            | { type?: string }
+            | undefined
+          if (!node?.type) return { success: false, error: 'Node not found' }
+          const allowed = ['site', 'building', 'level', 'zone']
+          if (!allowed.includes(node.type)) {
+            return {
+              success: false,
+              error: `Camera snapshot supports: ${allowed.join(', ')}`,
+            }
+          }
+          const op = String(operation).toLowerCase()
+          const id = nodeId as any
+          if (op === 'view') {
+            emitter.emit('camera-controls:view', { nodeId: id })
+            return { success: true, message: 'Opening snapshot view' }
+          }
+          if (op === 'capture') {
+            emitter.emit('camera-controls:capture', { nodeId: id })
+            return { success: true, message: 'Capture snapshot requested' }
+          }
+          if (op === 'clear') {
+            scene.updateNode(nodeId as any, { camera: undefined })
+            return { success: true, message: 'Cleared snapshot' }
+          }
+          return { success: false, error: 'Use operation: view, capture, or clear' }
+        },
+        { success: false, error: 'Failed camera snapshot action' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'renameNode',
+    {
+      description:
+        'Rename a site, building, level, zone, scan, or guide (same as double-click rename in the sidebar).',
+      parameters: {
+        nodeId: { type: 'string', description: 'Node id from getSceneInfo' },
+        name: { type: 'string', description: 'New display name' },
+      },
+    },
+    async ({ nodeId, name }: { nodeId: string; name: string }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          if (!getSceneState) return { success: false, error: 'Store not available' }
+          const scene = getSceneState()
+          if (!scene.nodes[nodeId as keyof typeof scene.nodes]) {
+            return { success: false, error: 'Node not found' }
+          }
+          const label = String(name).trim()
+          if (!label) return { success: false, error: 'Name must be non-empty' }
+          scene.updateNode(nodeId as any, { name: label })
+          return { success: true, message: `Renamed to "${label}"` }
+        },
+        { success: false, error: 'Failed to rename' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'deleteLevel',
+    {
+      description:
+        'Delete a floor level (not ground / level index 0 in scene data). Pass levelId from getSceneInfo or levelIndex like selectLevel.',
+      parameters: {
+        levelId: { type: 'string', description: 'Optional level node id' },
+        levelIndex: { type: 'number', description: 'Optional index among levels in selected building' },
+      },
+    },
+    async (args: { levelId?: string; levelIndex?: number }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          const getViewerState = getStore('viewer')
+          if (!getSceneState || !getViewerState) {
+            return { success: false, error: 'Stores not available' }
+          }
+          const scene = getSceneState()
+          const viewer = getViewerState()
+          const buildingId = viewer.selection?.buildingId
+          if (!buildingId) return { success: false, error: 'No building selected' }
+          const building = scene.nodes[buildingId] as {
+            type?: string
+            children?: string[]
+          }
+          if (!building || building.type !== 'building') {
+            return { success: false, error: 'Invalid building' }
+          }
+          const levelIds =
+            building.children?.filter((id: string) => scene.nodes[id]?.type === 'level') || []
+
+          let targetId: string | null = null
+          if (args.levelId) {
+            if (!levelIds.includes(args.levelId)) {
+              return { success: false, error: 'Level is not in the selected building' }
+            }
+            targetId = args.levelId
+          } else if (args.levelIndex !== undefined && args.levelIndex !== null) {
+            const idx = Number(args.levelIndex)
+            if (!Number.isInteger(idx) || idx < 0 || idx >= levelIds.length) {
+              return {
+                success: false,
+                error: `Invalid levelIndex. Use 0-${levelIds.length - 1}`,
+              }
+            }
+            targetId = levelIds[idx] ?? null
+          } else {
+            return { success: false, error: 'Provide levelId or levelIndex' }
+          }
+
+          const levelNode = targetId ? (scene.nodes[targetId] as { level?: number }) : null
+          if (!levelNode || levelNode.level === undefined) {
+            return { success: false, error: 'Level not found' }
+          }
+          if (levelNode.level === 0) {
+            return { success: false, error: 'Cannot delete ground floor (level 0)' }
+          }
+
+          scene.deleteNode(targetId as any)
+
+          const buildingAfter = scene.nodes[buildingId] as { children?: string[] } | undefined
+          const nextIds =
+            buildingAfter?.children?.filter((id: string) => scene.nodes[id]?.type === 'level') || []
+          const ground = nextIds.find((id: string) => (scene.nodes[id] as any)?.level === 0)
+          const nextLevelId = ground || nextIds[0] || null
+          if (viewer.selection?.levelId === targetId) {
+            viewer.setSelection({ levelId: nextLevelId })
+          }
+          return { success: true, message: 'Level deleted', levelId: nextLevelId ?? undefined }
+        },
+        { success: false, error: 'Failed to delete level' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'deleteScanOrGuide',
+    {
+      description:
+        'Remove a 3D scan or guide image from a level (sidebar row delete). Use reference id from getSceneInfo levels[].references.',
+      parameters: {
+        referenceId: { type: 'string', description: 'Scan or guide node id' },
+      },
+    },
+    async ({ referenceId }: { referenceId: string }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          const getEditorState = getStore('editor')
+          if (!getSceneState) return { success: false, error: 'Store not available' }
+          const scene = getSceneState()
+          const node = scene.nodes[referenceId as keyof typeof scene.nodes] as
+            | { type?: string; url?: string }
+            | undefined
+          if (!node || (node.type !== 'scan' && node.type !== 'guide')) {
+            return { success: false, error: 'Not a scan or guide node' }
+          }
+          const url = node.url
+          if (
+            url &&
+            (url.startsWith('http://') || url.startsWith('https://')) &&
+            typeof window !== 'undefined'
+          ) {
+            window.dispatchEvent(
+              new CustomEvent(VOWEL_REFERENCE_STORAGE_DELETE_EVENT, {
+                detail: {
+                  url,
+                  projectId: getVowelBridgeProjectId(),
+                },
+              }),
+            )
+          }
+          scene.deleteNode(referenceId as any)
+          if (getEditorState?.()?.selectedReferenceId === referenceId) {
+            getEditorState().setSelectedReferenceId(null)
+          }
+          return { success: true, message: 'Reference removed from scene' }
+        },
+        { success: false, error: 'Failed to delete reference' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'selectReference',
+    {
+      description:
+        'Select a scan/guide in the sidebar (opens reference panel). Pass null to clear.',
+      parameters: {
+        referenceId: {
+          type: 'string',
+          description: 'Scan or guide node id, or empty to clear',
+        },
+      },
+    },
+    async (args: { referenceId?: string | null }) => {
+      return safeAction(
+        () => {
+          const getEditorState = getStore('editor')
+          if (!getEditorState) return { success: false, error: 'Store not available' }
+          const id =
+            args.referenceId === undefined || args.referenceId === null || args.referenceId === ''
+              ? null
+              : String(args.referenceId)
+          getEditorState().setSelectedReferenceId(id)
+          return {
+            success: true,
+            message: id ? `Selected reference ${id}` : 'Cleared reference selection',
+          }
+        },
+        { success: false, error: 'Failed to select reference' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'clearMultiSelection',
+    {
+      description:
+        'Clear multi-selected 3D objects (same as the X on the "N objects selected" badge).',
+      parameters: {},
+    },
+    async () => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Store not available' }
+          getViewerState().setSelection({ selectedIds: [] })
+          return { success: true, message: 'Cleared multi-selection' }
+        },
+        { success: false, error: 'Failed to clear selection' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'selectSceneNodes',
+    {
+      description:
+        'Set outliner / canvas selection for structure or furnish tree nodes (walls, slabs, items, etc.). Pass comma-separated node ids, or "clear" to empty selection.',
+      parameters: {
+        nodeIds: {
+          type: 'string',
+          description:
+            'Comma-separated node ids, or the word "clear" to select nothing',
+        },
+      },
+    },
+    async ({ nodeIds }: { nodeIds: string }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          const getSceneState = getStore('scene')
+          if (!getViewerState || !getSceneState) {
+            return { success: false, error: 'Stores not available' }
+          }
+          const raw = String(nodeIds ?? '').trim()
+          if (!raw || raw.toLowerCase() === 'clear') {
+            getViewerState().setSelection({ selectedIds: [], zoneId: null })
+            return { success: true, message: 'Cleared scene selection' }
+          }
+          const scene = getSceneState()
+          const ids = raw
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+          for (const id of ids) {
+            if (!scene.nodes[id as keyof typeof scene.nodes]) {
+              return { success: false, error: `Unknown node id: ${id}` }
+            }
+          }
+          getViewerState().setSelection({
+            selectedIds: ids as any,
+            zoneId: null,
+          })
+          return { success: true, message: `Selected ${ids.length} node(s)` }
+        },
+        { success: false, error: 'Failed to set scene selection' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'selectZone',
+    {
+      description:
+        'Select a zone on the current structure view (same as clicking a zone row). Use zone id from getSceneInfo.',
+      parameters: {
+        zoneId: { type: 'string', description: 'Zone node id' },
+      },
+    },
+    async ({ zoneId }: { zoneId: string }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          const getViewerState = getStore('viewer')
+          const getEditorState = getStore('editor')
+          if (!getSceneState || !getViewerState || !getEditorState) {
+            return { success: false, error: 'Stores not available' }
+          }
+          const scene = getSceneState()
+          const node = scene.nodes[zoneId as keyof typeof scene.nodes] as { type?: string } | undefined
+          if (!node || node.type !== 'zone') {
+            return { success: false, error: 'Not a zone node' }
+          }
+          getViewerState().setSelection({ zoneId })
+          getEditorState().setPhase('structure')
+          getEditorState().setMode('select')
+          return { success: true, message: `Selected zone ${zoneId}` }
+        },
+        { success: false, error: 'Failed to select zone' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setZoneColor',
+    {
+      description: 'Change a zone swatch color (hex string, same as sidebar color dot).',
+      parameters: {
+        zoneId: { type: 'string', description: 'Zone node id from getSceneInfo' },
+        color: { type: 'string', description: 'CSS hex color e.g. #3b82f6' },
+      },
+    },
+    async ({ zoneId, color }: { zoneId: string; color: string }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          if (!getSceneState) return { success: false, error: 'Store not available' }
+          const scene = getSceneState()
+          const node = scene.nodes[zoneId as keyof typeof scene.nodes] as { type?: string } | undefined
+          if (!node || node.type !== 'zone') {
+            return { success: false, error: 'Not a zone node' }
+          }
+          const hex = String(color).trim()
+          if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
+            return { success: false, error: 'Color must be a hex string like #3b82f6' }
+          }
+          scene.updateNode(zoneId as any, { color: hex })
+          return { success: true, message: `Zone color set to ${hex}` }
+        },
+        { success: false, error: 'Failed to set zone color' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setPropertyLineEditing',
+    {
+      description:
+        'Show or hide property-line vertex editing in the site sidebar (pencil control). When true, switches to site phase and edit mode.',
+      parameters: {
+        editing: { type: 'boolean', description: 'true = edit vertices, false = leave edit mode' },
+      },
+    },
+    async ({ editing }: { editing: boolean }) => {
+      return safeAction(
+        () => {
+          const getEditorState = getStore('editor')
+          if (!getEditorState) return { success: false, error: 'Store not available' }
+          const ed = getEditorState()
+          if (editing) {
+            ed.setPhase('site')
+            ed.setMode('edit')
+            return { success: true, message: 'Property line editing on' }
+          }
+          ed.setMode('select')
+          return { success: true, message: 'Property line editing off' }
+        },
+        { success: false, error: 'Failed to toggle property line editing' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'setPropertyLineVertex',
+    {
+      description:
+        'Update one X or Z coordinate of a property-line vertex (site polygon). Point indices start at 0.',
+      parameters: {
+        pointIndex: { type: 'number', description: 'Vertex index (0-based)' },
+        axis: { type: 'string', description: '"x" or "z" (horizontal plane)' },
+        value: { type: 'number', description: 'New coordinate value in meters' },
+      },
+    },
+    async (args: { pointIndex: number; axis: string; value: number }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          if (!getSceneState) return { success: false, error: 'Store not available' }
+          const scene = getSceneState()
+          const rootId = scene.rootNodeIds?.[0]
+          const site = rootId ? (scene.nodes[rootId] as any) : null
+          if (!site || site.type !== 'site') {
+            return { success: false, error: 'No site node' }
+          }
+          const points: [number, number][] = [...(site.polygon?.points || [])]
+          const idx = Number(args.pointIndex)
+          if (!Number.isInteger(idx) || idx < 0 || idx >= points.length) {
+            return { success: false, error: 'Invalid pointIndex' }
+          }
+          const ax = String(args.axis).toLowerCase()
+          if (ax !== 'x' && ax !== 'z') {
+            return { success: false, error: 'axis must be x or z' }
+          }
+          const axisIdx = ax === 'x' ? 0 : 1
+          const next = points.map((p) => [...p] as [number, number])
+          next[idx]![axisIdx] = Number(args.value)
+          scene.updateNode(rootId as any, {
+            polygon: { type: 'polygon' as const, points: next },
+          })
+          return { success: true, message: `Updated vertex ${idx} ${ax}` }
+        },
+        { success: false, error: 'Failed to update vertex' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'addPropertyLineVertex',
+    {
+      description:
+        'Insert a property-line vertex between the last and first points (same as "Add point" in the sidebar).',
+      parameters: {},
+    },
+    async () => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          if (!getSceneState) return { success: false, error: 'Store not available' }
+          const scene = getSceneState()
+          const rootId = scene.rootNodeIds?.[0]
+          const site = rootId ? (scene.nodes[rootId] as any) : null
+          if (!site || site.type !== 'site') {
+            return { success: false, error: 'No site node' }
+          }
+          const points: [number, number][] = [...(site.polygon?.points || [])]
+          const lastPoint = points[points.length - 1]
+          const firstPoint = points[0]
+          if (!(lastPoint && firstPoint)) {
+            return { success: false, error: 'Not enough points to extend' }
+          }
+          const newPoint: [number, number] = [
+            (lastPoint[0] + firstPoint[0]) / 2,
+            (lastPoint[1] + firstPoint[1]) / 2,
+          ]
+          scene.updateNode(rootId as any, {
+            polygon: { type: 'polygon' as const, points: [...points, newPoint] },
+          })
+          return { success: true, message: 'Added property line point' }
+        },
+        { success: false, error: 'Failed to add vertex' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'deletePropertyLineVertex',
+    {
+      description:
+        'Remove a property-line vertex by index. Polygon must keep at least 3 corners.',
+      parameters: {
+        pointIndex: { type: 'number', description: 'Vertex index to remove (0-based)' },
+      },
+    },
+    async ({ pointIndex }: { pointIndex: number }) => {
+      return safeAction(
+        () => {
+          const getSceneState = getStore('scene')
+          if (!getSceneState) return { success: false, error: 'Store not available' }
+          const scene = getSceneState()
+          const rootId = scene.rootNodeIds?.[0]
+          const site = rootId ? (scene.nodes[rootId] as any) : null
+          if (!site || site.type !== 'site') {
+            return { success: false, error: 'No site node' }
+          }
+          const points: [number, number][] = [...(site.polygon?.points || [])]
+          const idx = Number(pointIndex)
+          if (points.length <= 3) {
+            return { success: false, error: 'Polygon must have at least 3 points' }
+          }
+          if (!Number.isInteger(idx) || idx < 0 || idx >= points.length) {
+            return { success: false, error: 'Invalid pointIndex' }
+          }
+          const next = points.filter((_, i) => i !== idx)
+          scene.updateNode(rootId as any, {
+            polygon: { type: 'polygon' as const, points: next },
+          })
+          return { success: true, message: `Removed vertex ${idx}` }
+        },
+        { success: false, error: 'Failed to delete vertex' },
+      )
+    },
+  )
 }
 
+/**
+ * Builds the object passed to {@link useSyncContext} from Zustand stores.
+ * Returns null when editor/viewer are not mounted yet.
+ */
+function buildEditorViewerSyncPayload(): Record<string, unknown> | null {
+  const getEditorState = getStore('editor')
+  const getViewerState = getStore('viewer')
+  if (!getEditorState || !getViewerState) return null
+
+  const editor = getEditorState()
+  const viewer = getViewerState()
+
+  return {
+    editor: {
+      phase: editor?.phase || 'structure',
+      mode: editor?.mode || 'build',
+      tool: editor?.tool,
+      structureLayer: editor?.structureLayer,
+      selectedReferenceId: editor?.selectedReferenceId ?? null,
+    },
+    viewer: {
+      selectedIds: viewer?.selection?.selectedIds || [],
+      buildingId: viewer?.selection?.buildingId,
+      levelId: viewer?.selection?.levelId,
+      zoneId: viewer?.selection?.zoneId ?? null,
+      cameraMode: viewer?.cameraMode,
+      levelMode: viewer?.levelMode,
+      wallMode: viewer?.wallMode,
+      showScans: viewer?.showScans,
+      showGuides: viewer?.showGuides,
+    },
+  }
+}
+
+/**
+ * Keeps Vowel session context aligned with editor + viewer state.
+ * `useSyncContext` takes the payload each render (see @vowel.to/client typings).
+ */
 function EditorStateSync() {
-  const syncContext = useSyncContext()
+  const [syncPayload, setSyncPayload] = useState<Record<string, unknown> | null>(() =>
+    typeof window === 'undefined' ? null : buildEditorViewerSyncPayload(),
+  )
 
   useEffect(() => {
-    if (!syncContext) return
-
-    const updateContext = () => {
-      const getEditorState = getStore('editor')
-      const getViewerState = getStore('viewer')
-
-      if (!getEditorState || !getViewerState) return
-
-      const editor = getEditorState()
-      const viewer = getViewerState()
-
-      syncContext({
-        editor: {
-          phase: editor?.phase || 'structure',
-          mode: editor?.mode || 'build',
-          tool: editor?.tool,
-          structureLayer: editor?.structureLayer,
-        },
-        viewer: {
-          selectedIds: viewer?.selection?.selectedIds || [],
-          buildingId: viewer?.selection?.buildingId,
-          levelId: viewer?.selection?.levelId,
-        },
-      })
+    const tick = () => {
+      setSyncPayload(buildEditorViewerSyncPayload())
+      const gv = getStore('viewer')
+      setVowelBridgeProjectId(gv?.()?.projectId ?? null)
     }
-
-    updateContext()
-
-    const interval = setInterval(updateContext, 2000)
+    tick()
+    const interval = setInterval(tick, 2000)
     return () => clearInterval(interval)
-  }, [syncContext])
+  }, [])
 
+  useSyncContext(syncPayload)
   return null
 }
 
-function VowelInitializer({ appId }: { appId: string }) {
+function VowelInitializer({
+  appId,
+  onClientReady,
+}: {
+  appId: string
+  onClientReady: (client: Vowel) => void
+}) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (initialized || !appId || typeof window === 'undefined') return
+    if (!appId || typeof window === 'undefined') return
 
     try {
       const { navigationAdapter } = createNextJSAdapters(router, {
@@ -510,14 +1419,7 @@ function VowelInitializer({ appId }: { appId: string }) {
         enableAutomation: false,
       })
 
-      const Vowel = (window as any).Vowel
-      if (!Vowel) {
-        console.error('[Vowel] Vowel not found on window')
-        setError('Vowel SDK not loaded')
-        return
-      }
-
-      vowelInstance = new Vowel({
+      const instance = new Vowel({
         appId: appId,
         instructions: `You are a helpful voice assistant for the Pascal 3D Building Editor.
 
@@ -528,25 +1430,39 @@ When performing actions, write to the application store/state, NOT manipulate th
 The <context> section is automatically updated with the current editor state. Always check it for the latest information.
 
 ## Available Actions:
-- getEditorState: Get current editor state (phase, mode, tool, selection)
-- getSceneInfo: Get scene overview (buildings, levels count)
-- setPhase: Switch phase (site, structure, furnish)
-- setMode: Switch mode (select, edit, delete, build)
-- setTool: Select tool (wall, door, window, slab, zone, item, etc.)
-- selectBuilding: Select a building by ID
-- selectLevel: Select level by index (0=ground floor)
-- deleteSelected: Delete selected elements
-- undo: Undo last action
-- redo: Redo last undone action
+- getEditorState: Current editor + selection summary
+- getSceneInfo: Site id, buildings, levels, per-level references (scan/guide) and zones, cameras, selection
+- setPhase: site | structure | furnish
+- setSidebarTab: structure (elements) | furnish | zones — matches S/F/Z sidebar tabs
+- setMode: select | edit | delete | build
+- setTool: wall, slab, door, window, zone, item, property-line, etc.
+- selectBuilding, selectLevel (by index)
+- addLevel, deleteLevel (by id or index; never ground floor)
+- openUploadScanOrFloorplan: File picker for scan/floorplan (optional levelIndex)
+- deleteScanOrGuide, selectReference (id or clear)
+- renameNode: Site, building, level, zone, scan, guide display names
+- nodeCameraSnapshot: view | capture | clear for site, building, level, or zone node ids
+- selectZone, setZoneColor
+- setPropertyLineEditing, setPropertyLineVertex, addPropertyLineVertex, deletePropertyLineVertex
+- clearMultiSelection: Clears multi-selected canvas objects
+- selectSceneNodes: Comma-separated ids or "clear" — outliner / structure tree selection
+- setCameraMode: perspective | orthographic
+- setLevelDisplayMode: stacked | exploded | solo | manual
+- setWallDisplayMode: up | cutaway | down
+- setShowScans / setShowGuides: boolean visibility
+- cameraOrbit: direction cw or ccw
+- cameraTopView: Top-down camera
+- deleteSelected, undo, redo
 
 ## How to Use:
-- "What tools are available?" → getEditorState
-- "Show me the scene" → getSceneInfo
-- "Switch to structure mode" → setPhase
-- "Select wall tool" → setTool
-- "Go to second floor" → selectLevel with levelIndex: 1
-- "Undo that" → undo
-- "Redo" → redo
+- Call getSceneInfo for ids (siteId, buildings, levels, references, zones) before snapshot/rename/delete
+- Sidebar site/building/level/zone camera menu → nodeCameraSnapshot
+- Property line pencil + vertices → setPropertyLineEditing + vertex actions
+- Sidebar tabs / zones layer → setSidebarTab
+- Add/remove floor → addLevel, deleteLevel
+- Upload reference → openUploadScanOrFloorplan
+- Toolbar view toggles → setCameraMode, setLevelDisplayMode, setWallDisplayMode, setShowScans, setShowGuides
+- Orbit / top view → cameraOrbit, cameraTopView
 
 Help users navigate the 3D editor with voice commands.`,
         navigationAdapter,
@@ -584,17 +1500,17 @@ Help users navigate the 3D editor with voice commands.`,
         },
       })
 
-      registerCustomActions(vowelInstance)
-      vowelInstance.updateContext(buildVowelContext())
+      registerCustomActions(instance)
+      instance.updateContext(buildVowelContext())
 
-      initialized = true
+      onClientReady(instance)
       setReady(true)
       console.log('[Vowel] Client initialized successfully')
     } catch (err) {
       console.error('[Vowel] Initialization failed:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
     }
-  }, [appId, router])
+  }, [appId, router, onClientReady])
 
   if (error) {
     console.warn('[Vowel] Initialization error (failing open):', error)
@@ -607,7 +1523,7 @@ Help users navigate the 3D editor with voice commands.`,
 
 export function VowelAppWrapper({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [vowelClient, setVowelClient] = useState<Vowel | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -619,14 +1535,9 @@ export function VowelAppWrapper({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  if (error) {
-    console.warn('[Vowel] Failed to initialize (failing open):', error)
-    return <>{children}</>
-  }
-
   return (
-    <VowelProvider client={vowelInstance}>
-      <VowelInitializer appId={appId} />
+    <VowelProvider client={vowelClient}>
+      <VowelInitializer appId={appId} onClientReady={setVowelClient} />
       {children}
       <VowelAgent position="bottom-right" enableFloatingCursor={false} />
     </VowelProvider>

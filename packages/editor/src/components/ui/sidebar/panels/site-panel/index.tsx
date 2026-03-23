@@ -35,6 +35,10 @@ import {
   PopoverTrigger,
 } from './../../../../../components/ui/primitives/popover'
 import { cn } from './../../../../../lib/utils'
+import {
+  type VowelOpenLevelUploadDetail,
+  VOWEL_OPEN_LEVEL_UPLOAD_EVENT,
+} from './../../../../../lib/vowel-bridge'
 import useEditor from './../../../../../store/use-editor'
 import { useUploadStore } from '../../../../../store/use-upload'
 import { InlineRenameInput } from './inline-rename-input'
@@ -401,6 +405,17 @@ function LevelReferences({
   const progress = uploadState?.progress ?? 0
 
   const scanInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<VowelOpenLevelUploadDetail>
+      if (ce.detail?.levelId === levelId) {
+        scanInputRef.current?.click()
+      }
+    }
+    window.addEventListener(VOWEL_OPEN_LEVEL_UPLOAD_EVENT, handler)
+    return () => window.removeEventListener(VOWEL_OPEN_LEVEL_UPLOAD_EVENT, handler)
+  }, [levelId])
 
   const references = Object.values(nodes).filter(
     (node): node is ScanNode | GuideNode =>

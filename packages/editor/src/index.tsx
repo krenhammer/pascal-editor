@@ -12,5 +12,13 @@ export { PresetsProvider } from './contexts/presets-context'
 export type { SaveStatus } from './hooks/use-auto-save'
 export type { SceneGraph } from './lib/scene'
 export { applySceneGraphToEditor } from './lib/scene'
+export {
+  getVowelBridgeProjectId,
+  setVowelBridgeProjectId,
+  VOWEL_OPEN_LEVEL_UPLOAD_EVENT,
+  VOWEL_REFERENCE_STORAGE_DELETE_EVENT,
+  type VowelOpenLevelUploadDetail,
+  type VowelReferenceStorageDeleteDetail,
+} from './lib/vowel-bridge'
 export { default as useEditor } from './store/use-editor'
 export { useUploadStore } from './store/use-upload'

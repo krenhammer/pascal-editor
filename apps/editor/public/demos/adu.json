@@ -1,0 +1,114 @@
+{
+  "nodes": {
+    "site_j6jaomk6pllfsgxo": {
+      "object": "node",
+      "id": "site_j6jaomk6pllfsgxo",
+      "type": "site",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "polygon": {
+        "type": "polygon",
+        "points": [
+          [
+            -15,
+            -15
+          ],
+          [
+            15,
+            -15
+          ],
+          [
+            15,
+            15
+          ],
+          [
+            -15,
+            15
+          ]
+        ]
+      },
+      "children": [
+        {
+          "object": "node",
+          "id": "building_0f80b1zxldnyurz9",
+          "type": "building",
+          "parentId": null,
+          "visible": true,
+          "metadata": {},
+          "children": [
+            "level_i60mlfi73adlv50f"
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "building_0f80b1zxldnyurz9": {
+      "object": "node",
+      "id": "building_0f80b1zxldnyurz9",
+      "type": "building",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "level_i60mlfi73adlv50f"
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "level_i60mlfi73adlv50f": {
+      "object": "node",
+      "id": "level_i60mlfi73adlv50f",
+      "type": "level",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "guide_ikmlsfqkeglxfq1c"
+      ],
+      "level": 0
+    },
+    "guide_ikmlsfqkeglxfq1c": {
+      "object": "node",
+      "id": "guide_ikmlsfqkeglxfq1c",
+      "type": "guide",
+      "name": "adu.png",
+      "parentId": "level_i60mlfi73adlv50f",
+      "visible": true,
+      "metadata": {},
+      "url": "asset://580b2c80-86d5-4333-a689-09ca28712df4",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 2.7,
+      "opacity": 56
+    }
+  },
+  "rootNodeIds": [
+    "site_j6jaomk6pllfsgxo"
+  ]
+}

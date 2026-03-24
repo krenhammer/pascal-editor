@@ -5,6 +5,7 @@ import { registerSceneInfoActions } from './actions/scene-info'
 import { registerSceneToolsActions } from './actions/scene-tools'
 import { registerSelectionActions } from './actions/selection'
 import { registerShellActions } from './actions/shell'
+import { registerSidebarWorkflowActions } from './actions/sidebar-workflows'
 import { registerViewerChromeActions } from './actions/viewer-chrome'
 import type { VowelInstance } from './types'
 
@@ -21,4 +22,5 @@ export function registerVowelActions(vowel: VowelInstance) {
   registerSceneToolsActions(vowel)
   registerSceneInfoActions(vowel)
   registerHistoryActions(vowel)
+  registerSidebarWorkflowActions(vowel)
 }

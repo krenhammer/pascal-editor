@@ -86,6 +86,18 @@ type EditorState = {
   // Preview mode (viewer-like experience inside the editor)
   isPreviewMode: boolean
   setPreviewMode: (preview: boolean) => void
+  /**
+   * Controlled Radix dialog for “Clear & start new” in Settings (danger zone).
+   * Vowel can open the same dialog via `openClearStartNewConfirmDialog`.
+   */
+  clearStartNewDialogOpen: boolean
+  setClearStartNewDialogOpen: (open: boolean) => void
+  /**
+   * When set to a level id, that level’s “Upload scan/floorplan” row opens the hidden file input once.
+   * Cleared immediately after the click attempt so the picker is not re-triggered on re-render.
+   */
+  pendingLevelUploadPickLevelId: string | null
+  setPendingLevelUploadPickLevelId: (levelId: string | null) => void
 }
 
 const useEditor = create<EditorState>()((set, get) => ({
@@ -241,6 +253,10 @@ const useEditor = create<EditorState>()((set, get) => ({
       set({ isPreviewMode: false })
     }
   },
+  clearStartNewDialogOpen: false,
+  setClearStartNewDialogOpen: (open) => set({ clearStartNewDialogOpen: open }),
+  pendingLevelUploadPickLevelId: null,
+  setPendingLevelUploadPickLevelId: (levelId) => set({ pendingLevelUploadPickLevelId: levelId }),
 }))
 
 export default useEditor

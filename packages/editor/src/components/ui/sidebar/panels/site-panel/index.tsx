@@ -389,6 +389,8 @@ function LevelReferences({
   const nodes = useScene((s) => s.nodes)
   const deleteNode = useScene((s) => s.deleteNode)
   const setSelectedReferenceId = useEditor((s) => s.setSelectedReferenceId)
+  const pendingLevelUploadPickLevelId = useEditor((s) => s.pendingLevelUploadPickLevelId)
+  const setPendingLevelUploadPickLevelId = useEditor((s) => s.setPendingLevelUploadPickLevelId)
   const uploadState = useUploadStore((s) => s.uploads[levelId])
   const clearUpload = useUploadStore((s) => s.clearUpload)
 
@@ -401,6 +403,19 @@ function LevelReferences({
   const progress = uploadState?.progress ?? 0
 
   const scanInputRef = useRef<HTMLInputElement>(null)
+
+  /**
+   * Vowel / programmatic open of the OS file picker for this level’s upload row.
+   * Delayed slightly so the level row can expand and the hidden input exists in the DOM.
+   */
+  useEffect(() => {
+    if (pendingLevelUploadPickLevelId !== levelId) return
+    const timer = window.setTimeout(() => {
+      scanInputRef.current?.click()
+      setPendingLevelUploadPickLevelId(null)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [pendingLevelUploadPickLevelId, levelId, setPendingLevelUploadPickLevelId])
 
   const references = Object.values(nodes).filter(
     (node): node is ScanNode | GuideNode =>

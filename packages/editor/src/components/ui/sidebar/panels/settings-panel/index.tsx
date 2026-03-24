@@ -14,6 +14,9 @@ import { Button } from './../../../../../components/ui/primitives/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from './../../../../../components/ui/primitives/dialog'
@@ -183,6 +186,8 @@ export function SettingsPanel({
   const resetSelection = useViewer((state) => state.resetSelection)
   const exportScene = useViewer((state) => state.exportScene)
   const setPhase = useEditor((state) => state.setPhase)
+  const clearStartNewDialogOpen = useEditor((state) => state.clearStartNewDialogOpen)
+  const setClearStartNewDialogOpen = useEditor((state) => state.setClearStartNewDialogOpen)
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false)
   const sceneGraphValue = useMemo(
     () => buildSceneGraphValue(nodes as Record<string, SceneNode>, rootNodeIds),
@@ -243,7 +248,7 @@ export function SettingsPanel({
     e.target.value = ''
   }
 
-  const handleResetToDefault = () => {
+  const performClearStartNew = () => {
     clearScene()
     resetSelection()
     setPhase('site')
@@ -410,12 +415,37 @@ export function SettingsPanel({
 
         <Button
           className="w-full justify-start gap-2"
-          onClick={handleResetToDefault}
+          onClick={() => setClearStartNewDialogOpen(true)}
           variant="destructive"
         >
           <Trash2 className="size-4" />
           Clear & Start New
         </Button>
+        <Dialog onOpenChange={setClearStartNewDialogOpen} open={clearStartNewDialogOpen}>
+          <DialogContent showCloseButton>
+            <DialogHeader>
+              <DialogTitle>Clear and start new?</DialogTitle>
+              <DialogDescription>
+                This removes the current build from the editor. Use Undo afterward only if you had
+                just changed the scene in this session; otherwise the layout is gone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setClearStartNewDialogOpen(false)} variant="outline">
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  performClearStartNew()
+                  setClearStartNewDialogOpen(false)
+                }}
+                variant="destructive"
+              >
+                Clear & start new
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )

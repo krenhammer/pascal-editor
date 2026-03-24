@@ -63,6 +63,8 @@ export function registerEditorStateActions(vowel: VowelInstance) {
               selectedReferenceId: editor?.selectedReferenceId,
               isPreviewMode: editor?.isPreviewMode,
               editingHole: editor?.editingHole,
+              clearStartNewDialogOpen: editor?.clearStartNewDialogOpen ?? false,
+              pendingLevelUploadPickLevelId: editor?.pendingLevelUploadPickLevelId ?? null,
             },
             viewer: {
               selectedIds: viewer?.selection?.selectedIds,

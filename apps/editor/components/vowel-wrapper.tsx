@@ -4,9 +4,8 @@ import { createNextJSAdapters, Vowel } from '@vowel.to/client'
 import { useVowel, VowelAgent, VowelProvider } from '@vowel.to/client/react'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-
-import { buildVowelContext, getStore } from './vowel/store-bridge'
 import { registerVowelActions } from './vowel/register-actions'
+import { buildVowelContext, getStore } from './vowel/store-bridge'
 import type { VowelInstance } from './vowel/types'
 
 const ROUTES = [{ path: '/', description: 'Editor - Main 3D building editor' }]
@@ -43,6 +42,8 @@ function EditorStateSync() {
           selectedReferenceId: editor?.selectedReferenceId,
           isPreviewMode: editor?.isPreviewMode,
           editingHole: editor?.editingHole,
+          clearStartNewDialogOpen: editor?.clearStartNewDialogOpen ?? false,
+          pendingLevelUploadPickLevelId: editor?.pendingLevelUploadPickLevelId ?? null,
         },
         viewer: {
           selectedIds: viewer?.selection?.selectedIds || [],
@@ -135,6 +136,7 @@ Before your first spoken reply, call getEditorState once if context might be sta
 - Shell: setCommandPaletteOpen, setSidebarWidth, cameraTopView, cameraOrbitClockwise, cameraOrbitCounterClockwise, cameraFocusNode, cameraCaptureNode, generateProjectThumbnail
 - Scene: updateSceneNode (partial patch), exportScene
 - History: undo, redo
+- Sidebar / project: addLevelToSelectedBuilding, deleteLevelByIndex (not level 0), saveBuildJsonToDownloads, loadBuildFromJsonString (full {nodes,rootNodeIds} JSON string), openUploadScanFloorplanPicker (optional levelId), openClearStartNewConfirmDialog, clearSceneStartNew (requires confirmDestructive: true for voice-only wipe)
 
 ## How to Use:
 - "What tools are available?" → getEditorState

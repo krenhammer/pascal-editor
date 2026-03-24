@@ -11,8 +11,10 @@ import { useKeyboard } from '../../hooks/use-keyboard'
 import { handleLocalLevelAssetUpload } from '../../lib/local-level-asset-upload'
 import {
   applySceneGraphToEditor,
+  clearPersistedEditorScene,
   loadSceneFromLocalStorage,
   type SceneGraph,
+  syncEditorSelectionFromCurrentScene,
 } from '../../lib/scene'
 import { initSFXBus } from '../../lib/sfx-bus'
 import useEditor from '../../store/use-editor'
@@ -102,16 +104,24 @@ export interface EditorProps {
 
   // Error recovery - called when user clicks "Load new JSON" from error dialog
   onLoadNewSceneRequest?: () => void
+
+  /**
+   * Optional hook when the user resets after a corrupt or incompatible saved scene (e.g. clear a
+   * server-side project draft). Runs after local autosave storage is cleared.
+   */
+  onCorruptedSceneReset?: () => void | Promise<void>
 }
 
 interface EditorSceneCrashFallbackProps {
   onLoadNewScene?: () => void
   onClearSceneAndGoHome?: () => void
+  onResetProject?: () => void
 }
 
 function EditorSceneCrashFallback({
   onLoadNewScene,
   onClearSceneAndGoHome,
+  onResetProject,
 }: EditorSceneCrashFallbackProps) {
   const handleGoHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
     // Clear scene data before navigating to prevent stale data on return
@@ -121,35 +131,47 @@ function EditorSceneCrashFallback({
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-background/95 p-4 text-foreground">
       <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-6 shadow-xl">
-        <h2 className="font-semibold text-lg">The editor scene failed to render</h2>
+        <h2 className="font-semibold text-lg">The editor hit a rendering error</h2>
         <p className="mt-2 text-muted-foreground text-sm">
-          You can retry the scene, load a different scene, or return home without reloading the
-          whole app shell.
+          This often happens when a scene from a previous session is invalid or incompatible (for
+          example hand-edited or partial JSON). You can discard the saved project and start fresh,
+          try reloading, or use another recovery option below.
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button
-            className="rounded-md border border-border bg-accent px-3 py-2 font-medium text-sm hover:bg-accent/80"
-            onClick={() => window.location.reload()}
-            type="button"
-          >
-            Reload editor
-          </button>
-          {onLoadNewScene && (
+        <div className="mt-4 flex flex-col gap-2">
+          {onResetProject && (
             <button
-              className="rounded-md border border-border bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
-              onClick={onLoadNewScene}
+              className="w-full rounded-md border border-border bg-primary px-3 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
+              onClick={onResetProject}
               type="button"
             >
-              Load new JSON
+              Reset project (discard saved scene)
             </button>
           )}
-          <a
-            className="rounded-md border border-border bg-background px-3 py-2 font-medium text-sm hover:bg-accent/40"
-            href="/"
-            onClick={handleGoHome}
-          >
-            Back to home
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="rounded-md border border-border bg-accent px-3 py-2 font-medium text-sm hover:bg-accent/80"
+              onClick={() => window.location.reload()}
+              type="button"
+            >
+              Reload editor
+            </button>
+            {onLoadNewScene && (
+              <button
+                className="rounded-md border border-border bg-background px-3 py-2 font-medium text-sm hover:bg-accent/40"
+                onClick={onLoadNewScene}
+                type="button"
+              >
+                Load new JSON
+              </button>
+            )}
+            <a
+              className="rounded-md border border-border bg-background px-3 py-2 font-medium text-sm hover:bg-accent/40"
+              href="/"
+              onClick={handleGoHome}
+            >
+              Back to home
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -171,6 +193,7 @@ export default function Editor({
   sitePanelProps,
   presetsAdapter,
   onLoadNewSceneRequest,
+  onCorruptedSceneReset,
 }: EditorProps) {
   useKeyboard()
 
@@ -248,6 +271,23 @@ export default function Editor({
   }
 
   /**
+   * Drops corrupt local autosave, optional host cleanup, then loads the default scene so the user
+   * can continue without a full reload.
+   */
+  const handleResetProjectAfterRenderError = () => {
+    clearPersistedEditorScene()
+    Promise.resolve(onCorruptedSceneReset?.())
+      .catch(() => {
+        // Host hook failure should not block recovery
+      })
+      .then(() => {
+        useScene.getState().clearScene()
+        syncEditorSelectionFromCurrentScene()
+        ErrorBoundary.resetErrorBoundary()
+      })
+  }
+
+  /**
    * Standalone hosts (e.g. `apps/editor` home) often omit {@link SitePanelProps}. Without a
    * `projectId`, the site panel blocks uploads before `onUploadAsset` runs. Local references
    * use IndexedDB and ignore the id, but the gate still requires a string — default both here.
@@ -274,33 +314,34 @@ export default function Editor({
       <div className="dark h-full w-full text-foreground">
         {showLoader && <SceneLoader />}
 
-        {isPreviewMode ? (
-          <ViewerOverlay onBack={() => useEditor.getState().setPreviewMode(false)} />
-        ) : (
-          <>
-            <ActionMenu />
-            <PanelManager />
-            <HelperManager />
-
-            <SidebarProvider className="fixed z-20">
-              <AppSidebar
-                appMenuButton={appMenuButton}
-                settingsPanelProps={settingsPanelProps}
-                sidebarTop={sidebarTop}
-                sitePanelProps={resolvedSitePanelProps}
-              />
-            </SidebarProvider>
-          </>
-        )}
-
         <ErrorBoundary
           fallback={
             <EditorSceneCrashFallback
-              onLoadNewScene={onLoadNewSceneRequest}
               onClearSceneAndGoHome={handleClearSceneAndGoHome}
+              onLoadNewScene={onLoadNewSceneRequest}
+              onResetProject={handleResetProjectAfterRenderError}
             />
           }
         >
+          {isPreviewMode ? (
+            <ViewerOverlay onBack={() => useEditor.getState().setPreviewMode(false)} />
+          ) : (
+            <>
+              <ActionMenu />
+              <PanelManager />
+              <HelperManager />
+
+              <SidebarProvider className="fixed z-20">
+                <AppSidebar
+                  appMenuButton={appMenuButton}
+                  settingsPanelProps={settingsPanelProps}
+                  sidebarTop={sidebarTop}
+                  sitePanelProps={resolvedSitePanelProps}
+                />
+              </SidebarProvider>
+            </>
+          )}
+
           <Viewer selectionManager={isPreviewMode ? 'default' : 'custom'}>
             {!isPreviewMode && <SelectionManager />}
             {!isPreviewMode && <FloatingActionMenu />}

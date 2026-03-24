@@ -51,6 +51,18 @@ function migrateNodes(nodes: Record<string, any>): Record<string, AnyNode> {
       }
     }
   }
+
+  /**
+   * Corrupt or hand-edited JSON (e.g. missing `children`) can persist in localStorage and crash
+   * the UI on the next session. Coerce every node's `children` to a `string[]` of child ids.
+   */
+  for (const [id, node] of Object.entries(patchedNodes)) {
+    if (!node || typeof node !== 'object' || !('type' in node)) continue
+    const raw = (node as { children?: unknown }).children
+    const children = Array.isArray(raw) ? raw.filter((c): c is string => typeof c === 'string') : []
+    patchedNodes[id] = { ...(node as object), children } as AnyNode
+  }
+
   return patchedNodes as Record<string, AnyNode>
 }
 

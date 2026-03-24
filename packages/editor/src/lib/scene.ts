@@ -9,6 +9,22 @@ export type SceneGraph = {
   rootNodeIds: string[]
 }
 
+const LOCAL_STORAGE_KEY = 'pascal-editor-scene'
+
+/**
+ * Returns true when `value` looks like a scene graph we can pass to {@link applySceneGraphToEditor}.
+ */
+function isSceneGraphPayload(value: unknown): value is SceneGraph {
+  if (value === null || typeof value !== 'object') return false
+  const g = value as SceneGraph
+  return (
+    g.nodes !== null &&
+    typeof g.nodes === 'object' &&
+    !Array.isArray(g.nodes) &&
+    Array.isArray(g.rootNodeIds)
+  )
+}
+
 export function syncEditorSelectionFromCurrentScene() {
   const sceneNodes = useScene.getState().nodes as Record<string, any>
   const sceneRootIds = useScene.getState().rootNodeIds
@@ -43,7 +59,7 @@ export function syncEditorSelectionFromCurrentScene() {
 }
 
 export function applySceneGraphToEditor(sceneGraph?: SceneGraph | null) {
-  if (sceneGraph?.nodes && sceneGraph.rootNodeIds) {
+  if (isSceneGraphPayload(sceneGraph)) {
     const { nodes, rootNodeIds } = sceneGraph
     useScene.getState().setScene(nodes as any, rootNodeIds as any)
   } else {
@@ -53,7 +69,17 @@ export function applySceneGraphToEditor(sceneGraph?: SceneGraph | null) {
   syncEditorSelectionFromCurrentScene()
 }
 
-const LOCAL_STORAGE_KEY = 'pascal-editor-scene'
+/**
+ * Removes the default localStorage snapshot so the next load does not re-apply corrupt JSON.
+ * Safe to call when the host uses only remote persistence (no-op if nothing was stored).
+ */
+export function clearPersistedEditorScene(): void {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY)
+  } catch {
+    // Ignore private mode / quota issues
+  }
+}
 
 export function saveSceneToLocalStorage(scene: SceneGraph): void {
   try {

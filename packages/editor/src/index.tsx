@@ -12,7 +12,7 @@ export { PresetsProvider } from './contexts/presets-context'
 export type { SaveStatus } from './hooks/use-auto-save'
 export { handleLocalLevelAssetUpload } from './lib/local-level-asset-upload'
 export type { SceneGraph } from './lib/scene'
-export { applySceneGraphToEditor } from './lib/scene'
+export { applySceneGraphToEditor, clearPersistedEditorScene } from './lib/scene'
 export {
   getVowelBridgeProjectId,
   setVowelBridgeProjectId,

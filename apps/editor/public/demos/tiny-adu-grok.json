@@ -1,0 +1,123 @@
+{
+  "nodes": {
+    "site_csoptyhxv775gapk": {
+      "object": "node",
+      "id": "site_csoptyhxv775gapk",
+      "type": "site",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "polygon": {
+        "type": "polygon",
+        "points": [[-11.17, -14.67], [11.17, -14.67], [11.17, 14.67], [-11.17, 14.67]]
+      },
+      "children": ["building_2liwobm97ci2n36s"]
+    },
+    "building_2liwobm97ci2n36s": {
+      "object": "node",
+      "id": "building_2liwobm97ci2n36s",
+      "type": "building",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "children": ["level_2pcgfw7ng7rxs135"],
+      "position": [0, 0, 0],
+      "rotation": [0, 0, 0]
+    },
+    "level_2pcgfw7ng7rxs135": {
+      "object": "node",
+      "id": "level_2pcgfw7ng7rxs135",
+      "type": "level",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "guide_6rbzdujkaz8e86pg",
+        "slab_glt8up4pn3ddl4zg",
+        "wall_mfj2989o364559j9",
+        "wall_dqx2izc2qys95245",
+        "wall_2woheexcok60fqtl",
+        "wall_h7lv5isz2dwe3mp1",
+        "wall_l3b0znr996ym7q9s",
+        "wall_nwgwa0h60f3ovd7m",
+        "wall_d7e5fznp6rj81gyj",
+        "wall_yu4khdodzly2f9h8",
+        "wall_mgp32dlk07uqbojh",
+        "wall_jyq8bov4el90cz0w",
+        "wall_0qutbdee6xgpzbr6",
+        "wall_th422wn2qfd3yvt8",
+        "wall_o90xwb5p603bypsc",
+        "zone_qyinr922vlx4do2v",
+        "zone_i7dfqxg785wzbot6",
+        "zone_b8n7zapx38ovdylf",
+        "zone_2y13pztqxrq3elgw",
+        "zone_66eg9bjmrp6l7ed6",
+        "zone_s4vrf1pezmz7xebf",
+        "zone_2zjhg8i9ofbagjlo"
+      ],
+      "level": 0
+    },
+    "guide_6rbzdujkaz8e86pg": {
+      "object": "node",
+      "id": "guide_6rbzdujkaz8e86pg",
+      "type": "guide",
+      "name": "tiny-adu",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "url": "asset://147658e5-3d5d-4ff1-bf83-cd5bcb331cd5",
+      "position": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "scale": 1.4,
+      "opacity": 50
+    },
+    "slab_glt8up4pn3ddl4zg": {
+      "object": "node",
+      "id": "slab_glt8up4pn3ddl4zg",
+      "type": "slab",
+      "name": "Slab 1",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [[-11.17, -14.67], [-11.17, 14.67], [11.17, 14.67], [11.17, -14.67]],
+      "holes": [],
+      "elevation": 0.05
+    },
+
+    "wall_mfj2989o364559j9": {
+      "object": "node", "id": "wall_mfj2989o364559j9", "type": "wall", "name": "Left Exterior", "parentId": "level_2pcgfw7ng7rxs135", "visible": true,
+      "start": [-11.17, -14.67], "end": [-11.17, 14.67], "frontSide": "exterior", "backSide": "unknown", "height": 3
+    },
+    "wall_dqx2izc2qys95245": {
+      "object": "node", "id": "wall_dqx2izc2qys95245", "type": "wall", "name": "Right Exterior", "parentId": "level_2pcgfw7ng7rxs135", "visible": true,
+      "start": [11.17, 14.67], "end": [11.17, -14.67], "frontSide": "exterior", "backSide": "unknown", "height": 3
+    },
+    "wall_2woheexcok60fqtl": {
+      "object": "node", "id": "wall_2woheexcok60fqtl", "type": "wall", "name": "Bottom Exterior", "parentId": "level_2pcgfw7ng7rxs135", "visible": true,
+      "start": [-11.17, -14.67], "end": [11.17, -14.67], "frontSide": "interior", "backSide": "exterior", "height": 3
+    },
+    "wall_h7lv5isz2dwe3mp1": {
+      "object": "node", "id": "wall_h7lv5isz2dwe3mp1", "type": "wall", "name": "Top Exterior", "parentId": "level_2pcgfw7ng7rxs135", "visible": true,
+      "start": [11.17, 14.67], "end": [-11.17, 14.67], "frontSide": "interior", "backSide": "exterior", "height": 3
+    },
+
+    "wall_l3b0znr996ym7q9s": { "object": "node", "id": "wall_l3b0znr996ym7q9s", "type": "wall", "name": "Living Divider", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [-11.17, 0], "end": [0, 0], "frontSide": "interior", "backSide": "interior" },
+    "wall_nwgwa0h60f3ovd7m": { "object": "node", "id": "wall_nwgwa0h60f3ovd7m", "type": "wall", "name": "Bath Divider", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [-2, -7.5], "end": [5, -7.5], "frontSide": "interior", "backSide": "interior" },
+    "wall_d7e5fznp6rj81gyj": { "object": "node", "id": "wall_d7e5fznp6rj81gyj", "type": "wall", "name": "Bed Divider", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [5, 0], "end": [11.17, 0], "frontSide": "unknown", "backSide": "interior" },
+    "wall_yu4khdodzly2f9h8": { "object": "node", "id": "wall_yu4khdodzly2f9h8", "type": "wall", "name": "Office Wall", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [7, 0], "end": [7, -5], "frontSide": "unknown", "backSide": "unknown" },
+    "wall_mgp32dlk07uqbojh": { "object": "node", "id": "wall_mgp32dlk07uqbojh", "type": "wall", "name": "Bed Right", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [5, 0], "end": [5, -14.67], "frontSide": "interior", "backSide": "interior" },
+    "wall_jyq8bov4el90cz0w": { "object": "node", "id": "wall_jyq8bov4el90cz0w", "type": "wall", "name": "Living-Bed", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [0, 0], "end": [0, -14.67], "frontSide": "interior", "backSide": "unknown" },
+    "wall_0qutbdee6xgpzbr6": { "object": "node", "id": "wall_0qutbdee6xgpzbr6", "type": "wall", "name": "Living Top", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [0, 7.5], "end": [0, 14.67], "frontSide": "interior", "backSide": "interior" },
+    "wall_th422wn2qfd3yvt8": { "object": "node", "id": "wall_th422wn2qfd3yvt8", "type": "wall", "name": "Bath Left", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [-2, -14.67], "end": [-2, -7.5], "frontSide": "interior", "backSide": "unknown" },
+    "wall_o90xwb5p603bypsc": { "object": "node", "id": "wall_o90xwb5p603bypsc", "type": "wall", "name": "Office-Bed", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "start": [7, -5], "end": [11.17, -5], "frontSide": "unknown", "backSide": "interior" },
+
+    "zone_qyinr922vlx4do2v": { "object": "node", "id": "zone_qyinr922vlx4do2v", "type": "zone", "name": "Bed", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "polygon": [[5, -14.67],[11.17, -14.67],[11.17, 0],[5, 0]], "color": "#22c55e" },
+    "zone_i7dfqxg785wzbot6": { "object": "node", "id": "zone_i7dfqxg785wzbot6", "type": "zone", "name": "Living", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "polygon": [[-11.17, 0],[0, 0],[0, 14.67],[-11.17, 14.67]], "color": "#f97316" },
+    "zone_b8n7zapx38ovdylf": { "object": "node", "id": "zone_b8n7zapx38ovdylf", "type": "zone", "name": "Bath", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "polygon": [[-11.17, -14.67],[-2, -14.67],[-2, -7.5],[-11.17, -7.5]], "color": "#10b981" },
+    "zone_2y13pztqxrq3elgw": { "object": "node", "id": "zone_2y13pztqxrq3elgw", "type": "zone", "name": "Office", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "polygon": [[5, 0],[11.17, 0],[11.17, -5],[7, -5],[7, 0]], "color": "#84cc16" },
+    "zone_66eg9bjmrp6l7ed6": { "object": "node", "id": "zone_66eg9bjmrp6l7ed6", "type": "zone", "name": "Porch", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "polygon": [[0, 7.5],[5, 7.5],[5, 14.67],[0, 14.67]], "color": "#06b6d4" },
+    "zone_s4vrf1pezmz7xebf": { "object": "node", "id": "zone_s4vrf1pezmz7xebf", "type": "zone", "name": "Sink", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "polygon": [[-11.17, -7.5],[-2, -7.5],[-2, -14.67],[-11.17, -14.67]], "color": "#ef4444" },
+    "zone_2zjhg8i9ofbagjlo": { "object": "node", "id": "zone_2zjhg8i9ofbagjlo", "type": "zone", "name": "W/D Closet", "parentId": "level_2pcgfw7ng7rxs135", "visible": true, "polygon": [[5, -5],[7, -5],[7, 0],[5, 0]], "color": "#f59e0b" }
+  },
+  "rootNodeIds": ["site_csoptyhxv775gapk"]
+}

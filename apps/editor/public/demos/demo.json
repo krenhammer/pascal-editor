@@ -1,0 +1,1340 @@
+{
+  "nodes": {
+    "site_csoptyhxv775gapk": {
+      "object": "node",
+      "id": "site_csoptyhxv775gapk",
+      "type": "site",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "polygon": {
+        "type": "polygon",
+        "points": [
+          [
+            -15,
+            -15
+          ],
+          [
+            15,
+            -15
+          ],
+          [
+            15,
+            15
+          ],
+          [
+            -15,
+            15
+          ]
+        ]
+      },
+      "children": [
+        {
+          "object": "node",
+          "id": "building_2liwobm97ci2n36s",
+          "type": "building",
+          "parentId": null,
+          "visible": true,
+          "metadata": {},
+          "children": [
+            "level_2pcgfw7ng7rxs135"
+          ],
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "building_2liwobm97ci2n36s": {
+      "object": "node",
+      "id": "building_2liwobm97ci2n36s",
+      "type": "building",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "level_2pcgfw7ng7rxs135"
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    "level_2pcgfw7ng7rxs135": {
+      "object": "node",
+      "id": "level_2pcgfw7ng7rxs135",
+      "type": "level",
+      "parentId": null,
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "guide_6rbzdujkaz8e86pg",
+        "slab_glt8up4pn3ddl4zg",
+        "wall_mfj2989o364559j9",
+        "wall_dqx2izc2qys95245",
+        "wall_2woheexcok60fqtl",
+        "wall_h7lv5isz2dwe3mp1",
+        "wall_l3b0znr996ym7q9s",
+        "wall_nwgwa0h60f3ovd7m",
+        "wall_d7e5fznp6rj81gyj",
+        "wall_yu4khdodzly2f9h8",
+        "wall_mgp32dlk07uqbojh",
+        "wall_jyq8bov4el90cz0w",
+        "wall_0qutbdee6xgpzbr6",
+        "zone_qyinr922vlx4do2v",
+        "zone_i7dfqxg785wzbot6",
+        "zone_b8n7zapx38ovdylf",
+        "zone_2y13pztqxrq3elgw",
+        "zone_66eg9bjmrp6l7ed6",
+        "zone_s4vrf1pezmz7xebf",
+        "zone_2zjhg8i9ofbagjlo",
+        "wall_th422wn2qfd3yvt8",
+        "wall_o90xwb5p603bypsc"
+      ],
+      "level": 0
+    },
+    "guide_6rbzdujkaz8e86pg": {
+      "object": "node",
+      "id": "guide_6rbzdujkaz8e86pg",
+      "type": "guide",
+      "name": "adu",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "url": "asset://147658e5-3d5d-4ff1-bf83-cd5bcb331cd5",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": 1.4,
+      "opacity": 50
+    },
+    "slab_glt8up4pn3ddl4zg": {
+      "object": "node",
+      "id": "slab_glt8up4pn3ddl4zg",
+      "type": "slab",
+      "name": "Slab 1",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": false,
+      "metadata": {},
+      "polygon": [
+        [
+          -5,
+          -4.5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          6,
+          5
+        ],
+        [
+          6,
+          -4.5
+        ]
+      ],
+      "holes": [],
+      "elevation": 0.05
+    },
+    "wall_mfj2989o364559j9": {
+      "object": "node",
+      "id": "wall_mfj2989o364559j9",
+      "type": "wall",
+      "name": "Wall 1",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "door_fggnq4it0cu7t2tk",
+        "window_jzjlzjedq38noy63"
+      ],
+      "start": [
+        -5,
+        -4.5
+      ],
+      "end": [
+        -5,
+        5
+      ],
+      "frontSide": "exterior",
+      "backSide": "unknown",
+      "height": 3
+    },
+    "wall_dqx2izc2qys95245": {
+      "object": "node",
+      "id": "wall_dqx2izc2qys95245",
+      "type": "wall",
+      "name": "Wall 2",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [],
+      "start": [
+        6,
+        5
+      ],
+      "end": [
+        6,
+        -4.5
+      ],
+      "frontSide": "exterior",
+      "backSide": "unknown",
+      "height": 3
+    },
+    "wall_2woheexcok60fqtl": {
+      "object": "node",
+      "id": "wall_2woheexcok60fqtl",
+      "type": "wall",
+      "name": "Wall 3",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "window_y085ehtgqorn3z8b",
+        "window_jivy8c56cfxz7yq1"
+      ],
+      "start": [
+        -5,
+        -4.5
+      ],
+      "end": [
+        6,
+        -4.5
+      ],
+      "frontSide": "interior",
+      "backSide": "exterior",
+      "height": 3
+    },
+    "wall_h7lv5isz2dwe3mp1": {
+      "object": "node",
+      "id": "wall_h7lv5isz2dwe3mp1",
+      "type": "wall",
+      "name": "Wall 4",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "window_82qx1t8373hsoxlz",
+        "door_cijy1cyc2r146knh"
+      ],
+      "start": [
+        6,
+        5
+      ],
+      "end": [
+        -5,
+        5
+      ],
+      "frontSide": "interior",
+      "backSide": "exterior",
+      "height": 3
+    },
+    "window_82qx1t8373hsoxlz": {
+      "object": "node",
+      "id": "window_82qx1t8373hsoxlz",
+      "type": "window",
+      "name": "Window 2",
+      "parentId": "wall_h7lv5isz2dwe3mp1",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        8.5,
+        1.5,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_h7lv5isz2dwe3mp1",
+      "width": 3.2,
+      "height": 1.5,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "columnRatios": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "rowRatios": [
+        1
+      ],
+      "columnDividerThickness": 0.03,
+      "rowDividerThickness": 0.03,
+      "sill": true,
+      "sillDepth": 0.08,
+      "sillThickness": 0.03
+    },
+    "door_cijy1cyc2r146knh": {
+      "object": "node",
+      "id": "door_cijy1cyc2r146knh",
+      "type": "door",
+      "name": "Door 1",
+      "parentId": "wall_h7lv5isz2dwe3mp1",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        5,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_h7lv5isz2dwe3mp1",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "door_fggnq4it0cu7t2tk": {
+      "object": "node",
+      "id": "door_fggnq4it0cu7t2tk",
+      "type": "door",
+      "name": "Door 2",
+      "parentId": "wall_mfj2989o364559j9",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        4,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_mfj2989o364559j9",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "window_jzjlzjedq38noy63": {
+      "object": "node",
+      "id": "window_jzjlzjedq38noy63",
+      "type": "window",
+      "name": "Window 2",
+      "parentId": "wall_mfj2989o364559j9",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        2,
+        1,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_mfj2989o364559j9",
+      "width": 1.5,
+      "height": 1.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "columnRatios": [
+        1
+      ],
+      "rowRatios": [
+        1
+      ],
+      "columnDividerThickness": 0.03,
+      "rowDividerThickness": 0.03,
+      "sill": true,
+      "sillDepth": 0.08,
+      "sillThickness": 0.03
+    },
+    "window_jivy8c56cfxz7yq1": {
+      "object": "node",
+      "id": "window_jivy8c56cfxz7yq1",
+      "type": "window",
+      "name": "Window 3",
+      "parentId": "wall_2woheexcok60fqtl",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        6,
+        1,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "side": "front",
+      "wallId": "wall_2woheexcok60fqtl",
+      "width": 0.9,
+      "height": 1.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "columnRatios": [
+        1
+      ],
+      "rowRatios": [
+        1
+      ],
+      "columnDividerThickness": 0.03,
+      "rowDividerThickness": 0.03,
+      "sill": true,
+      "sillDepth": 0.08,
+      "sillThickness": 0.03
+    },
+    "window_y085ehtgqorn3z8b": {
+      "object": "node",
+      "id": "window_y085ehtgqorn3z8b",
+      "type": "window",
+      "name": "Window 4",
+      "parentId": "wall_2woheexcok60fqtl",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        9,
+        1,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "side": "front",
+      "wallId": "wall_2woheexcok60fqtl",
+      "width": 1.5,
+      "height": 1.2,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "columnRatios": [
+        1
+      ],
+      "rowRatios": [
+        1
+      ],
+      "columnDividerThickness": 0.03,
+      "rowDividerThickness": 0.03,
+      "sill": true,
+      "sillDepth": 0.08,
+      "sillThickness": 0.03
+    },
+    "wall_l3b0znr996ym7q9s": {
+      "object": "node",
+      "id": "wall_l3b0znr996ym7q9s",
+      "type": "wall",
+      "name": "Wall 5",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [],
+      "start": [
+        -5,
+        0
+      ],
+      "end": [
+        0,
+        0
+      ],
+      "frontSide": "interior",
+      "backSide": "interior"
+    },
+    "wall_nwgwa0h60f3ovd7m": {
+      "object": "node",
+      "id": "wall_nwgwa0h60f3ovd7m",
+      "type": "wall",
+      "name": "Wall 7",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "door_7a6x9gpkz9untagu"
+      ],
+      "start": [
+        2.5,
+        -1.5
+      ],
+      "end": [
+        -1,
+        -1.5
+      ],
+      "frontSide": "interior",
+      "backSide": "interior"
+    },
+    "door_7a6x9gpkz9untagu": {
+      "object": "node",
+      "id": "door_7a6x9gpkz9untagu",
+      "type": "door",
+      "name": "Door 3",
+      "parentId": "wall_nwgwa0h60f3ovd7m",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        1.5,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_nwgwa0h60f3ovd7m",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "wall_d7e5fznp6rj81gyj": {
+      "object": "node",
+      "id": "wall_d7e5fznp6rj81gyj",
+      "type": "wall",
+      "name": "Wall 9",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [],
+      "start": [
+        6,
+        0
+      ],
+      "end": [
+        2.5,
+        0
+      ],
+      "frontSide": "unknown",
+      "backSide": "interior"
+    },
+    "wall_yu4khdodzly2f9h8": {
+      "object": "node",
+      "id": "wall_yu4khdodzly2f9h8",
+      "type": "wall",
+      "name": "Wall 10",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [],
+      "start": [
+        3.5,
+        0
+      ],
+      "end": [
+        3.5,
+        -1
+      ],
+      "frontSide": "unknown",
+      "backSide": "unknown"
+    },
+    "wall_mgp32dlk07uqbojh": {
+      "object": "node",
+      "id": "wall_mgp32dlk07uqbojh",
+      "type": "wall",
+      "name": "Wall 11",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "door_z5ghm8i39mx7ne75"
+      ],
+      "start": [
+        2.5,
+        0
+      ],
+      "end": [
+        2.5,
+        -4.5
+      ],
+      "frontSide": "interior",
+      "backSide": "interior"
+    },
+    "wall_jyq8bov4el90cz0w": {
+      "object": "node",
+      "id": "wall_jyq8bov4el90cz0w",
+      "type": "wall",
+      "name": "Wall 12",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "door_5hjzbqoa5x4kqaoo"
+      ],
+      "start": [
+        0,
+        0
+      ],
+      "end": [
+        0,
+        -4.5
+      ],
+      "frontSide": "interior",
+      "backSide": "unknown"
+    },
+    "door_5hjzbqoa5x4kqaoo": {
+      "object": "node",
+      "id": "door_5hjzbqoa5x4kqaoo",
+      "type": "door",
+      "name": "Door 4",
+      "parentId": "wall_jyq8bov4el90cz0w",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        1,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "side": "front",
+      "wallId": "wall_jyq8bov4el90cz0w",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "door_z5ghm8i39mx7ne75": {
+      "object": "node",
+      "id": "door_z5ghm8i39mx7ne75",
+      "type": "door",
+      "name": "Door 5",
+      "parentId": "wall_mgp32dlk07uqbojh",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        1,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_mgp32dlk07uqbojh",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "wall_0qutbdee6xgpzbr6": {
+      "object": "node",
+      "id": "wall_0qutbdee6xgpzbr6",
+      "type": "wall",
+      "name": "Wall 13",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [],
+      "start": [
+        0,
+        1.5
+      ],
+      "end": [
+        0,
+        5
+      ],
+      "frontSide": "interior",
+      "backSide": "interior"
+    },
+    "zone_qyinr922vlx4do2v": {
+      "object": "node",
+      "id": "zone_qyinr922vlx4do2v",
+      "type": "zone",
+      "name": "Bedroom 1",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [
+        [
+          -5,
+          -4.5
+        ],
+        [
+          -5,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          -4.5
+        ]
+      ],
+      "color": "#ef4444"
+    },
+    "zone_i7dfqxg785wzbot6": {
+      "object": "node",
+      "id": "zone_i7dfqxg785wzbot6",
+      "type": "zone",
+      "name": "Living",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [
+        [
+          -5,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
+      ],
+      "color": "#f97316"
+    },
+    "zone_b8n7zapx38ovdylf": {
+      "object": "node",
+      "id": "zone_b8n7zapx38ovdylf",
+      "type": "zone",
+      "name": "Kitchen",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [
+        [
+          2.5,
+          0
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          6,
+          5
+        ],
+        [
+          2.5,
+          5
+        ]
+      ],
+      "color": "#f59e0b"
+    },
+    "zone_2y13pztqxrq3elgw": {
+      "object": "node",
+      "id": "zone_2y13pztqxrq3elgw",
+      "type": "zone",
+      "name": "Dining",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [
+        [
+          0.5,
+          1
+        ],
+        [
+          0.5,
+          3
+        ],
+        [
+          2.5,
+          3
+        ],
+        [
+          2.5,
+          1
+        ]
+      ],
+      "color": "#84cc16"
+    },
+    "zone_66eg9bjmrp6l7ed6": {
+      "object": "node",
+      "id": "zone_66eg9bjmrp6l7ed6",
+      "type": "zone",
+      "name": "Bedroom 2",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [
+        [
+          2.5,
+          -4.5
+        ],
+        [
+          6,
+          -4.5
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          2.5,
+          0
+        ]
+      ],
+      "color": "#22c55e"
+    },
+    "zone_s4vrf1pezmz7xebf": {
+      "object": "node",
+      "id": "zone_s4vrf1pezmz7xebf",
+      "type": "zone",
+      "name": "Bathroom",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [
+        [
+          0,
+          -4.5
+        ],
+        [
+          2.5,
+          -4.5
+        ],
+        [
+          2.5,
+          -1.5
+        ],
+        [
+          0,
+          -1.5
+        ]
+      ],
+      "color": "#10b981"
+    },
+    "zone_2zjhg8i9ofbagjlo": {
+      "object": "node",
+      "id": "zone_2zjhg8i9ofbagjlo",
+      "type": "zone",
+      "name": "Entry",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "polygon": [
+        [
+          0,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          0,
+          5
+        ]
+      ],
+      "color": "#06b6d4"
+    },
+    "wall_th422wn2qfd3yvt8": {
+      "object": "node",
+      "id": "wall_th422wn2qfd3yvt8",
+      "type": "wall",
+      "name": "Wall 12",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "door_djejs99qex4ujpen",
+        "door_omtqsn7ne7hxie66"
+      ],
+      "start": [
+        -1,
+        -4.5
+      ],
+      "end": [
+        -1,
+        -1.5
+      ],
+      "frontSide": "interior",
+      "backSide": "unknown"
+    },
+    "wall_o90xwb5p603bypsc": {
+      "object": "node",
+      "id": "wall_o90xwb5p603bypsc",
+      "type": "wall",
+      "name": "Wall 13",
+      "parentId": "level_2pcgfw7ng7rxs135",
+      "visible": true,
+      "metadata": {},
+      "children": [
+        "door_cmolveiu52761c7q",
+        "door_od7v4orjegmdexis"
+      ],
+      "start": [
+        3.5,
+        -1
+      ],
+      "end": [
+        6,
+        -1
+      ],
+      "frontSide": "unknown",
+      "backSide": "interior"
+    },
+    "door_djejs99qex4ujpen": {
+      "object": "node",
+      "id": "door_djejs99qex4ujpen",
+      "type": "door",
+      "name": "Door 6",
+      "parentId": "wall_th422wn2qfd3yvt8",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        1,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "side": "front",
+      "wallId": "wall_th422wn2qfd3yvt8",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "door_omtqsn7ne7hxie66": {
+      "object": "node",
+      "id": "door_omtqsn7ne7hxie66",
+      "type": "door",
+      "name": "Door 7",
+      "parentId": "wall_th422wn2qfd3yvt8",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        2,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "side": "front",
+      "wallId": "wall_th422wn2qfd3yvt8",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "door_cmolveiu52761c7q": {
+      "object": "node",
+      "id": "door_cmolveiu52761c7q",
+      "type": "door",
+      "name": "Door 8",
+      "parentId": "wall_o90xwb5p603bypsc",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        0.5,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_o90xwb5p603bypsc",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    },
+    "door_od7v4orjegmdexis": {
+      "object": "node",
+      "id": "door_od7v4orjegmdexis",
+      "type": "door",
+      "name": "Door 9",
+      "parentId": "wall_o90xwb5p603bypsc",
+      "visible": true,
+      "metadata": {},
+      "position": [
+        1.5,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "side": "back",
+      "wallId": "wall_o90xwb5p603bypsc",
+      "width": 0.9,
+      "height": 2.1,
+      "frameThickness": 0.05,
+      "frameDepth": 0.07,
+      "threshold": true,
+      "thresholdHeight": 0.02,
+      "hingesSide": "left",
+      "swingDirection": "inward",
+      "segments": [
+        {
+          "type": "panel",
+          "heightRatio": 0.4,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        },
+        {
+          "type": "panel",
+          "heightRatio": 0.6,
+          "columnRatios": [
+            1
+          ],
+          "dividerThickness": 0.03,
+          "panelDepth": 0.01,
+          "panelInset": 0.04
+        }
+      ],
+      "handle": true,
+      "handleHeight": 1.05,
+      "handleSide": "right",
+      "contentPadding": [
+        0.04,
+        0.04
+      ],
+      "doorCloser": false,
+      "panicBar": false,
+      "panicBarHeight": 1
+    }
+  },
+  "rootNodeIds": [
+    "site_csoptyhxv775gapk"
+  ]
+}

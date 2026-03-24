@@ -259,8 +259,15 @@ export default function Editor({
   }
 
   useEffect(() => {
-    useViewer.getState().setProjectId(resolvedSitePanelProps.projectId ?? null)
-  }, [resolvedSitePanelProps.projectId])
+    const currentProjectId = useViewer.getState().projectId
+    // Only set the projectId if:
+    // 1. A sitePanelProps.projectId was explicitly provided (host-managed)
+    // 2. OR no projectId is currently set (initial load)
+    // This prevents overwriting voice-created project IDs (newProject action)
+    if (sitePanelProps?.projectId || !currentProjectId) {
+      useViewer.getState().setProjectId(resolvedSitePanelProps.projectId ?? null)
+    }
+  }, [resolvedSitePanelProps.projectId, sitePanelProps?.projectId])
 
   return (
     <PresetsProvider adapter={presetsAdapter}>

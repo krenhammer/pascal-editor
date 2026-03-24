@@ -10,6 +10,7 @@ export type { SitePanelProps } from './components/ui/sidebar/panels/site-panel'
 export type { PresetsAdapter, PresetsTab } from './contexts/presets-context'
 export { PresetsProvider } from './contexts/presets-context'
 export type { SaveStatus } from './hooks/use-auto-save'
+export { handleLocalLevelAssetUpload } from './lib/local-level-asset-upload'
 export type { SceneGraph } from './lib/scene'
 export { applySceneGraphToEditor } from './lib/scene'
 export {

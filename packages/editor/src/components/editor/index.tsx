@@ -8,6 +8,7 @@ import { ViewerZoneSystem } from '../../components/viewer-zone-system'
 import { type PresetsAdapter, PresetsProvider } from '../../contexts/presets-context'
 import { type SaveStatus, useAutoSave } from '../../hooks/use-auto-save'
 import { useKeyboard } from '../../hooks/use-keyboard'
+import { handleLocalLevelAssetUpload } from '../../lib/local-level-asset-upload'
 import {
   applySceneGraphToEditor,
   loadSceneFromLocalStorage,
@@ -36,6 +37,9 @@ import { PresetThumbnailGenerator } from './preset-thumbnail-generator'
 import { SelectionManager } from './selection-manager'
 import { SiteEdgeLabels } from './site-edge-labels'
 import { ThumbnailGenerator } from './thumbnail-generator'
+
+/** Synthetic id for IndexedDB-only reference uploads when the host omits {@link SitePanelProps.projectId}. */
+const DEFAULT_LOCAL_PROJECT_ID = 'local'
 
 // Load default scene initially (will be replaced when onLoad runs)
 useScene.getState().loadScene()
@@ -105,7 +109,10 @@ interface EditorSceneCrashFallbackProps {
   onClearSceneAndGoHome?: () => void
 }
 
-function EditorSceneCrashFallback({ onLoadNewScene, onClearSceneAndGoHome }: EditorSceneCrashFallbackProps) {
+function EditorSceneCrashFallback({
+  onLoadNewScene,
+  onClearSceneAndGoHome,
+}: EditorSceneCrashFallbackProps) {
   const handleGoHome = (e: React.MouseEvent<HTMLAnchorElement>) => {
     // Clear scene data before navigating to prevent stale data on return
     onClearSceneAndGoHome?.()
@@ -116,7 +123,8 @@ function EditorSceneCrashFallback({ onLoadNewScene, onClearSceneAndGoHome }: Edi
       <div className="w-full max-w-md rounded-2xl border border-border/60 bg-background p-6 shadow-xl">
         <h2 className="font-semibold text-lg">The editor scene failed to render</h2>
         <p className="mt-2 text-muted-foreground text-sm">
-          You can retry the scene, load a different scene, or return home without reloading the whole app shell.
+          You can retry the scene, load a different scene, or return home without reloading the
+          whole app shell.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
@@ -239,6 +247,21 @@ export default function Editor({
     ErrorBoundary.resetErrorBoundary()
   }
 
+  /**
+   * Standalone hosts (e.g. `apps/editor` home) often omit {@link SitePanelProps}. Without a
+   * `projectId`, the site panel blocks uploads before `onUploadAsset` runs. Local references
+   * use IndexedDB and ignore the id, but the gate still requires a string — default both here.
+   */
+  const resolvedSitePanelProps: SitePanelProps = {
+    projectId: sitePanelProps?.projectId ?? DEFAULT_LOCAL_PROJECT_ID,
+    onUploadAsset: sitePanelProps?.onUploadAsset ?? handleLocalLevelAssetUpload,
+    onDeleteAsset: sitePanelProps?.onDeleteAsset,
+  }
+
+  useEffect(() => {
+    useViewer.getState().setProjectId(resolvedSitePanelProps.projectId ?? null)
+  }, [resolvedSitePanelProps.projectId])
+
   return (
     <PresetsProvider adapter={presetsAdapter}>
       <div className="dark h-full w-full text-foreground">
@@ -257,13 +280,20 @@ export default function Editor({
                 appMenuButton={appMenuButton}
                 settingsPanelProps={settingsPanelProps}
                 sidebarTop={sidebarTop}
-                sitePanelProps={sitePanelProps}
+                sitePanelProps={resolvedSitePanelProps}
               />
             </SidebarProvider>
           </>
         )}
 
-        <ErrorBoundary fallback={<EditorSceneCrashFallback onLoadNewScene={onLoadNewSceneRequest} onClearSceneAndGoHome={handleClearSceneAndGoHome} />}>
+        <ErrorBoundary
+          fallback={
+            <EditorSceneCrashFallback
+              onLoadNewScene={onLoadNewSceneRequest}
+              onClearSceneAndGoHome={handleClearSceneAndGoHome}
+            />
+          }
+        >
           <Viewer selectionManager={isPreviewMode ? 'default' : 'custom'}>
             {!isPreviewMode && <SelectionManager />}
             {!isPreviewMode && <FloatingActionMenu />}

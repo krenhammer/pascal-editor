@@ -1,5 +1,5 @@
-import type { VowelInstance } from '../types'
 import { getStore, safeAction } from '../store-bridge'
+import type { VowelInstance } from '../types'
 
 /**
  * Registers building/level selection and bulk delete of the current selection.
@@ -122,6 +122,88 @@ export function registerSelectionActions(vowel: VowelInstance) {
           return { success: true, message: `Deleted ${selectedIds.length} element(s)` }
         },
         { success: false, error: 'Failed to delete' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'selectSceneNodes',
+    {
+      description:
+        'Set the multi-selection to specific scene node ids (clears zone focus). Use getSceneInfo / ids from context.',
+      parameters: {
+        nodeIds: {
+          type: 'object',
+          description: 'Array of node id strings',
+        },
+      },
+    },
+    async (params: { nodeIds?: string[] | string }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Stores not available' }
+          const raw = params?.nodeIds
+          let ids: string[] = []
+          if (Array.isArray(raw)) {
+            ids = raw.map(String)
+          } else if (typeof raw === 'string' && raw.trim()) {
+            try {
+              const parsed = JSON.parse(raw) as unknown
+              ids = Array.isArray(parsed) ? parsed.map(String) : [raw]
+            } catch {
+              ids = [raw]
+            }
+          }
+          getViewerState().setSelection({ selectedIds: ids, zoneId: null })
+          return { success: true, message: `Selected ${ids.length} node(s)` }
+        },
+        { success: false, error: 'Failed to select nodes' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'selectZone',
+    {
+      description: 'Focus a zone by id (clears multi-selected scene node ids)',
+      parameters: {
+        zoneId: { type: 'string', description: 'Zone node id, or empty string to clear' },
+      },
+    },
+    async ({ zoneId }: { zoneId: string }) => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Stores not available' }
+          const z = zoneId?.trim() || null
+          getViewerState().setSelection({
+            zoneId: z,
+            selectedIds: [],
+          })
+          return { success: true, message: z ? `Zone ${z}` : 'Zone cleared' }
+        },
+        { success: false, error: 'Failed to select zone' },
+      )
+    },
+  )
+
+  vowel.registerAction(
+    'resetViewerSelection',
+    {
+      description:
+        'Clear building, level, zone, and selected node ids (same as site-phase reset pattern)',
+      parameters: {},
+    },
+    async () => {
+      return safeAction(
+        () => {
+          const getViewerState = getStore('viewer')
+          if (!getViewerState) return { success: false, error: 'Stores not available' }
+          getViewerState().resetSelection()
+          return { success: true, message: 'Selection reset' }
+        },
+        { success: false, error: 'Failed to reset selection' },
       )
     },
   )

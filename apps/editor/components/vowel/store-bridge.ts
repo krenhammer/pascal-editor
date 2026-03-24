@@ -6,25 +6,40 @@
 /** Node types that exist on the default scaffold before the user adds geometry or objects. */
 const STRUCTURAL_SCAFFOLD_TYPES = new Set(['site', 'building', 'level'])
 
+/** Known Zustand roots the Vowel bridge can read without static imports from app packages. */
+export type StoreName = 'editor' | 'viewer' | 'scene' | 'commandPalette' | 'sidebarChrome'
+
 /**
- * Resolves the Zustand `getState` accessor for editor, viewer, or scene stores by package name.
+ * Resolves the Zustand `getState` accessor for editor, viewer, scene, or editor UI stores.
  *
- * @param name - Which store slice to load (`editor` | `viewer` | `scene` maps to app packages).
+ * @param name - Store id; `sidebarChrome` is the resizable sidebar width store.
  * @returns `getState` function, or `null` if not in browser or module failed to load.
  */
-export function getStore(name: string) {
+export function getStore(name: StoreName) {
   if (typeof window === 'undefined') return null
-  const path =
-    name === 'editor'
-      ? '@pascal-app/editor'
-      : name === 'viewer'
-        ? '@pascal-app/viewer'
-        : '@pascal-app/core'
+
+  if (name === 'editor' || name === 'commandPalette' || name === 'sidebarChrome') {
+    try {
+      const mod = require('@pascal-app/editor')
+      if (name === 'editor') return mod.useEditor?.getState
+      if (name === 'commandPalette') return mod.useCommandPalette?.getState
+      return mod.useSidebarStore?.getState
+    } catch {
+      return null
+    }
+  }
+
+  if (name === 'viewer') {
+    try {
+      const mod = require('@pascal-app/viewer')
+      return mod.useViewer?.getState
+    } catch {
+      return null
+    }
+  }
 
   try {
-    const mod = require(path)
-    if (name === 'editor') return mod.useEditor?.getState
-    if (name === 'viewer') return mod.useViewer?.getState
+    const mod = require('@pascal-app/core')
     return mod.useScene?.getState
   } catch {
     return null
@@ -44,15 +59,22 @@ export function buildVowelContext() {
 
   try {
     const getEditorState = getStore('editor')
-    const phase = getEditorState?.()?.phase || 'structure'
-    const tool = getEditorState?.()?.tool || null
+    const editor = getEditorState?.()
+    const phase = editor?.phase || 'structure'
+    const tool = editor?.tool || null
     return {
       route: {
         pathname,
         pathnameLabel: pathname === '/' ? 'Editor' : pathname,
         search: window.location.search,
       },
-      editor: { phase, tool },
+      editor: {
+        phase,
+        tool,
+        mode: editor?.mode,
+        sidebarPanel: editor?.sidebarPanel,
+        structureLayer: editor?.structureLayer,
+      },
     }
   } catch {
     return {

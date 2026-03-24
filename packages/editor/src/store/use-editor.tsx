@@ -50,6 +50,9 @@ export type CatalogCategory =
 
 export type StructureLayer = 'zones' | 'elements'
 
+/** Left sidebar content: Site tree vs Settings — kept in the editor store so voice agents can sync it. */
+export type SidebarPanelId = 'site' | 'settings'
+
 // Combined tool type
 export type Tool = SiteTool | StructureTool | FurnishTool
 
@@ -62,10 +65,14 @@ type EditorState = {
   setTool: (tool: Tool | null) => void
   structureLayer: StructureLayer
   setStructureLayer: (layer: StructureLayer) => void
+  /** Which main sidebar tab is visible (icon rail). */
+  sidebarPanel: SidebarPanelId
+  setSidebarPanel: (panel: SidebarPanelId) => void
   catalogCategory: CatalogCategory | null
   setCatalogCategory: (category: CatalogCategory | null) => void
   selectedItem: AssetInput | null
-  setSelectedItem: (item: AssetInput) => void
+  /** Clears the active furnish catalog pick when `null`. */
+  setSelectedItem: (item: AssetInput | null) => void
   movingNode: ItemNode | WindowNode | DoorNode | null
   setMovingNode: (node: ItemNode | WindowNode | DoorNode | null) => void
   selectedReferenceId: string | null
@@ -193,6 +200,8 @@ const useEditor = create<EditorState>()((set, get) => ({
   },
   tool: null,
   setTool: (tool) => set({ tool }),
+  sidebarPanel: 'site',
+  setSidebarPanel: (sidebarPanel) => set({ sidebarPanel }),
   structureLayer: 'elements',
   setStructureLayer: (layer) => {
     const { mode } = get()

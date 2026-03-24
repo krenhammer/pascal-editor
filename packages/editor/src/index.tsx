@@ -1,6 +1,7 @@
 export type { EditorProps } from './components/editor'
 export { default as Editor } from './components/editor'
 export { useCommandPalette } from './components/ui/command-palette'
+export { useSidebarStore } from './components/ui/primitives/sidebar'
 export { SceneLoader } from './components/ui/scene-loader'
 export type {
   ProjectVisibility,
@@ -10,8 +11,16 @@ export type { SitePanelProps } from './components/ui/sidebar/panels/site-panel'
 export type { PresetsAdapter, PresetsTab } from './contexts/presets-context'
 export { PresetsProvider } from './contexts/presets-context'
 export type { SaveStatus } from './hooks/use-auto-save'
+export { findCatalogItemBySrc } from './lib/catalog-resolve'
 export type { SceneGraph } from './lib/scene'
 export { applySceneGraphToEditor } from './lib/scene'
-export type { Mode, Phase, Tool } from './store/use-editor'
+export type {
+  CatalogCategory,
+  Mode,
+  Phase,
+  SidebarPanelId,
+  StructureLayer,
+  Tool,
+} from './store/use-editor'
 export { default as useEditor } from './store/use-editor'
 export { useUploadStore } from './store/use-upload'

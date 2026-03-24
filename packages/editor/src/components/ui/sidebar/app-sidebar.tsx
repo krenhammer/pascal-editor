@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, useEffect, useState } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { CommandPalette } from './../../../components/ui/command-palette'
 import {
   Sidebar,
@@ -9,6 +9,7 @@ import {
   useSidebarStore,
 } from './../../../components/ui/primitives/sidebar'
 import { cn } from './../../../lib/utils'
+import useEditor from './../../../store/use-editor'
 import { IconRail, type PanelId } from './icon-rail'
 import { SettingsPanel, type SettingsPanelProps } from './panels/settings-panel'
 import { SitePanel, type SitePanelProps } from './panels/site-panel'
@@ -26,7 +27,8 @@ export function AppSidebar({
   settingsPanelProps,
   sitePanelProps,
 }: AppSidebarProps) {
-  const [activePanel, setActivePanel] = useState<PanelId>('site')
+  const activePanel = useEditor((s) => s.sidebarPanel)
+  const setActivePanel = useEditor((s) => s.setSidebarPanel)
 
   useEffect(() => {
     // Widen default sidebar (288px → 432px) for better project title visibility

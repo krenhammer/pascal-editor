@@ -1,5 +1,5 @@
-import type { VowelInstance } from '../types'
 import { getStore, safeAction } from '../store-bridge'
+import type { VowelInstance } from '../types'
 
 /**
  * Registers `getSceneInfo` — hierarchical site/building/level summary for voice context.

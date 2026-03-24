@@ -21,11 +21,15 @@ function EditorStateSync() {
     const pushContext = () => {
       const getEditorState = getStore('editor')
       const getViewerState = getStore('viewer')
+      const getCmd = getStore('commandPalette')
+      const getSidebar = getStore('sidebarChrome')
 
       if (!getEditorState || !getViewerState) return
 
       const editor = getEditorState()
       const viewer = getViewerState()
+      const cmd = getCmd?.()
+      const sidebar = getSidebar?.()
 
       updateContext({
         editor: {
@@ -33,11 +37,31 @@ function EditorStateSync() {
           mode: editor?.mode || 'build',
           tool: editor?.tool,
           structureLayer: editor?.structureLayer,
+          sidebarPanel: editor?.sidebarPanel,
+          catalogCategory: editor?.catalogCategory,
+          selectedCatalogSrc: editor?.selectedItem?.src ?? null,
+          selectedReferenceId: editor?.selectedReferenceId,
+          isPreviewMode: editor?.isPreviewMode,
+          editingHole: editor?.editingHole,
         },
         viewer: {
           selectedIds: viewer?.selection?.selectedIds || [],
+          zoneId: viewer?.selection?.zoneId,
           buildingId: viewer?.selection?.buildingId,
           levelId: viewer?.selection?.levelId,
+          theme: viewer?.theme,
+          cameraMode: viewer?.cameraMode,
+          levelMode: viewer?.levelMode,
+          wallMode: viewer?.wallMode,
+          showScans: viewer?.showScans,
+          showGuides: viewer?.showGuides,
+          showGrid: viewer?.showGrid,
+          debugColors: viewer?.debugColors,
+          projectId: viewer?.projectId,
+        },
+        ui: {
+          commandPaletteOpen: cmd?.open ?? false,
+          sidebarWidth: sidebar?.width ?? null,
         },
       })
     }
@@ -100,17 +124,14 @@ The <context> section is automatically updated with the current editor state. Al
 ## CRITICAL: First utterance in a new session
 Before your first spoken reply, call getEditorState once if context might be stale. If sceneIsEffectivelyEmpty is true, your entire first utterance must be exactly: "Lets get started". Otherwise exactly: "Let's continue". No extra words on that first line. After that, follow the concise speech rule.
 
-## Available Actions:
-- getEditorState: Get current editor state (phase, mode, tool, selection)
-- getSceneInfo: Get scene overview (buildings, levels count)
-- setPhase: Switch phase (site, structure, furnish)
-- setMode: Switch mode (select, edit, delete, build)
-- setTool: Select tool (wall, door, window, slab, zone, item, etc.)
-- selectBuilding: Select a building by ID
-- selectLevel: Select level by index (0=ground floor)
-- deleteSelected: Delete selected elements
-- undo: Undo last action
-- redo: Redo last undone action
+## Available Actions (use tool/schema names; full params in client):
+- getEditorState / getSceneInfo: Read state (getEditorState includes editor.*, viewer.*, ui.*, sceneSummary, sceneIsEffectivelyEmpty)
+- setPhase, setMode, setTool, setStructureLayer, setSidebarPanel (site|settings), setPreviewMode, setCatalogCategory, setSelectedReferenceId, setSelectedCatalogItem (by src), setEditingHole
+- Viewer: setTheme, setCameraMode, setLevelMode, setWallMode, setShowScans, setShowGuides, setShowGrid, setDebugColors
+- Selection: selectBuilding, selectLevel, selectSceneNodes, selectZone, resetViewerSelection, deleteSelected
+- Shell: setCommandPaletteOpen, setSidebarWidth, cameraTopView, cameraOrbitClockwise, cameraOrbitCounterClockwise, cameraFocusNode, cameraCaptureNode, generateProjectThumbnail
+- Scene: updateSceneNode (partial patch), exportScene
+- History: undo, redo
 
 ## How to Use:
 - "What tools are available?" → getEditorState

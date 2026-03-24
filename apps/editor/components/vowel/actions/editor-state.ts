@@ -1,14 +1,15 @@
-import type { VowelInstance } from '../types'
 import { getStore, isSceneEffectivelyEmpty, safeAction } from '../store-bridge'
+import type { VowelInstance } from '../types'
 
 /**
- * Registers `getEditorState` — snapshot of editor / viewer / selection and scene emptiness for the agent.
+ * Registers `getEditorState` — full snapshot of editor, viewer, shell UI, and scene summary for the agent.
  */
 export function registerEditorStateActions(vowel: VowelInstance) {
   vowel.registerAction(
     'getEditorState',
     {
-      description: 'Get current editor state (phase, mode, tool, selection)',
+      description:
+        'Get full editor + viewer + UI chrome state (phase, sidebar, toggles, selection). Call for stale context.',
       parameters: {},
     },
     async () => {
@@ -17,6 +18,8 @@ export function registerEditorStateActions(vowel: VowelInstance) {
           const getEditorState = getStore('editor')
           const getViewerState = getStore('viewer')
           const getSceneState = getStore('scene')
+          const getCmd = getStore('commandPalette')
+          const getSidebar = getStore('sidebarChrome')
 
           if (!getEditorState || !getViewerState || !getSceneState) {
             return { success: false, error: 'Stores not available' }
@@ -25,6 +28,8 @@ export function registerEditorStateActions(vowel: VowelInstance) {
           const editor = getEditorState()
           const viewer = getViewerState()
           const scene = getSceneState()
+          const cmd = getCmd?.()
+          const sidebar = getSidebar?.()
 
           const buildingId = viewer?.selection?.buildingId
           const levelId = viewer?.selection?.levelId
@@ -41,18 +46,49 @@ export function registerEditorStateActions(vowel: VowelInstance) {
             levelName = levelNode?.name || `Level ${levelNode?.level}` || levelId
           }
 
+          const sceneIsEffectivelyEmpty = isSceneEffectivelyEmpty()
+
           return {
             success: true,
-            phase: editor?.phase,
-            mode: editor?.mode,
-            tool: editor?.tool,
-            structureLayer: editor?.structureLayer,
-            selectedBuilding: buildingName,
-            selectedLevel: levelName,
-            selectedIds: viewer?.selection?.selectedIds,
-            totalNodes: Object.keys(scene?.nodes || {}).length,
-            /** True if only site/building/level scaffold — opening greeting uses this. */
-            sceneIsEffectivelyEmpty: isSceneEffectivelyEmpty(),
+            /** Flat field kept for greeting prompts that reference `sceneIsEffectivelyEmpty`. */
+            sceneIsEffectivelyEmpty,
+            editor: {
+              phase: editor?.phase,
+              mode: editor?.mode,
+              tool: editor?.tool,
+              structureLayer: editor?.structureLayer,
+              sidebarPanel: editor?.sidebarPanel,
+              catalogCategory: editor?.catalogCategory,
+              selectedCatalogSrc: editor?.selectedItem?.src ?? null,
+              selectedReferenceId: editor?.selectedReferenceId,
+              isPreviewMode: editor?.isPreviewMode,
+              editingHole: editor?.editingHole,
+            },
+            viewer: {
+              selectedIds: viewer?.selection?.selectedIds,
+              zoneId: viewer?.selection?.zoneId,
+              selectedBuilding: buildingName,
+              selectedLevel: levelName,
+              currentBuildingId: buildingId,
+              currentLevelId: levelId,
+              theme: viewer?.theme,
+              cameraMode: viewer?.cameraMode,
+              levelMode: viewer?.levelMode,
+              wallMode: viewer?.wallMode,
+              showScans: viewer?.showScans,
+              showGuides: viewer?.showGuides,
+              showGrid: viewer?.showGrid,
+              debugColors: viewer?.debugColors,
+              projectId: viewer?.projectId,
+            },
+            ui: {
+              commandPaletteOpen: cmd?.open ?? false,
+              sidebarWidthPx: sidebar?.width ?? null,
+            },
+            sceneSummary: {
+              totalNodes: Object.keys(scene?.nodes || {}).length,
+              sceneIsEffectivelyEmpty,
+            },
           }
         },
         { success: false, error: 'Failed to get editor state' },

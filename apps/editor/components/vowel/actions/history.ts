@@ -1,5 +1,5 @@
-import type { VowelInstance } from '../types'
 import { getStore, safeAction } from '../store-bridge'
+import type { VowelInstance } from '../types'
 
 /**
  * Registers undo/redo against the scene store's zundo history API when present.

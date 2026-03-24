@@ -115,6 +115,9 @@ function VowelInitializer({
 ## CRITICAL: Concise speech
 Keep every response short: default to one brief sentence (or two only if needed). Do not ramble or list everything unless the user asks for detail.
 
+## CRITICAL: After completing an action
+When you have successfully carried out the user's command (tools that change state or perform an operation), your entire spoken reply must be exactly the word: Done. Do not repeat or paraphrase what they said; do not narrate what you did. If they only asked a read-only question (state/scene info) with no action to perform, answer in one short factual sentence instead — still do not echo their command back.
+
 ## CRITICAL: Write to App Store, Not DOM
 When performing actions, write to the application store/state, NOT manipulate the DOM directly.
 
@@ -170,7 +173,7 @@ Help users navigate the 3D editor with voice commands.`,
            * Matches vowel-react `references/languages-and-vad.md` (`mode: 'disabled'`).
            */
           turnDetection: { mode: 'disabled' },
-          initialGreetingPrompt: `First: call getEditorState. Your entire first utterance must be only: "Lets get started" if sceneIsEffectivelyEmpty is true, otherwise only: "Let's continue". No other words. Then wait for the user. Every reply after that: one short concise sentence unless the user asks for more.`,
+          initialGreetingPrompt: `First: call getEditorState. Your entire first utterance must be only: "Lets get started" if sceneIsEffectivelyEmpty is true, otherwise only: "Let's continue". No other words. Then wait for the user. After that: if you successfully completed an action they asked for, say only "Done" — never repeat their command. For pure questions (read-only), one short factual sentence. No echoing the user's words.`,
         },
         onUserSpeakingChange: (isSpeaking: boolean) => {
           console.log('[Vowel] User speaking:', isSpeaking)
